@@ -1,0 +1,39 @@
+/* Design tokens: bright racing-party palette (original, not taken from any game). */
+:root {
+  --red: #e60012;
+  --red-dark: #a8000d;
+  --red-light: #ff5a66;
+  --sky: #6cc4ff;
+  --sky-mid: #3ba7f5;
+  --sky-dark: #1c6fb8;
+  --sky-pale: #e3f4ff;
+  --gold: #ffc81e;
+  --gold-dark: #d99400;
+  --gold-pale: #fff3c4;
+  --green: #4cc85a;
+  --green-dark: #1f7a2c;
+  --green-pale: #dff5e1;
+  --navy: #14213d;
+  --navy-2: #24345c;
+  --ink-soft: #46527a;
+  --white: #ffffff;
+  --cloud: #f4f8ff;
+  --silver: #c9d1dd;
+  --bronze: #d98b4a;
+  --orange: #ff7a00;
+  --pink: #d63ca8;
+
+  --radius: 22px;
+  --radius-sm: 14px;
+  --border: 3px solid var(--navy);
+  --press: 0 6px 0 var(--navy);
+  --card-shadow: 0 8px 0 rgba(20, 33, 61, 0.22);
+
+  --font-display: 'Lilita One', 'Baloo 2', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --font-emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --checker: repeating-conic-gradient(var(--navy) 0 25%, #fff 0 50%) 0 0 / 14px 14px;
+  --checker-big: repeating-conic-gradient(var(--navy) 0 25%, #fff 0 50%) 0 0 / 28px 28px;
+}

@@ -2,7 +2,7 @@ import { AVATARS, COLORS } from '../data/avatars';
 import { pointsForPlace, orderFromTotals } from './points';
 import { createRng, shuffle, type Rng } from './rng';
 import type { Heat, HeatResult, Settings } from './types';
-import { addPlayer, commitRound, createTournament, defaultSettings, previewRound, saveHeatResult, type IdGen } from './tournament';
+import { addPlayer, commitRound, createTournament, defaultSettings, previewRound, randomCupFor, saveHeatResult, setHeatCup, type IdGen } from './tournament';
 import type { Tournament } from './types';
 
 export const DEMO_NAMES = [
@@ -48,7 +48,10 @@ export function buildDemo(newId: IdGen, now: number, opts: { players?: number; m
     const p = previewRound(t, now + k, newId, now);
     if (!p.ok) break;
     t = commitRound(t, p.round);
-    for (const h of p.round.heats) t = saveHeatResult(t, h.id, simulateResult(h, settings, skillFor, rng), now, newId);
+    for (const h of p.round.heats) {
+      t = setHeatCup(t, h.id, randomCupFor(t, Math.floor(rng() * 2 ** 31)));
+      t = saveHeatResult(t, h.id, simulateResult(h, settings, skillFor, rng), now, newId);
+    }
   }
   return t;
 }
