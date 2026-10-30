@@ -8,5 +8,8 @@ export default defineConfig({
   base: './',
   plugins: [react(), viteSingleFile()],
   build: { target: 'es2020', assetsInlineLimit: 100_000_000, cssCodeSplit: false },
+  // Meshnet (NordVPN) peers reach the dev/preview server as <device>.nord.
+  server: { allowedHosts: ['.nord'] },
+  preview: { allowedHosts: ['.nord'] },
   test: { include: ['src/**/*.test.ts'], environment: 'node' },
 });

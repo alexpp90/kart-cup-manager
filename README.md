@@ -9,7 +9,7 @@ A local tournament app for kart-racing nights on **one console**: sign-ups at a 
 | | |
 |---|---|
 | ![Kiosk sign-up "Join the Race!"](docs/screenshots/kiosk.webp) | ![Result entry: tap the finishing order, running heat total](docs/screenshots/result-entry.webp) |
-| **Kiosk sign-up** on a tablet: name, driver, color, racer card | **Result entry**: tap racers in finishing order, the last one fills in |
+| **Kiosk sign-up**: name, driver, color, racer card | **Result entry**: tap racers in finishing order, the last one fills in |
 | ![Round preview with repeat pairings and regenerate](docs/screenshots/round-preview.webp) | ![Heat cards of a finished round](docs/screenshots/rounds.webp) |
 | **Round preview** before saving, with repeat-pairing stats | **Rounds**: heat cards with cup, placings and points |
 | ![Live standings with position arrows and tiebreak tooltip](docs/screenshots/standings.webp) | ![Finals setup with stage editor and qualified seeds](docs/screenshots/finals-setup.webp) |
@@ -44,6 +44,16 @@ npm run build
 
 This produces **`dist/index.html`**: one self-contained file with all JavaScript, CSS and fonts inlined. Copy it to the event laptop (or a USB stick) and double-click it. It works offline, straight from disk. Data is saved in that browser's local storage, so keep using the same browser on the same machine.
 
+## Open it from another device (NordVPN Meshnet, LAN)
+
+```bash
+npm run serve
+```
+
+This builds and serves the app on port 4173 on all network interfaces. On another Meshnet peer, open `http://<this-device>.nord:4173` (or its Meshnet IP, e.g. `http://100.x.y.z:4173`). Devices on the same Wi-Fi can use the LAN address that Vite prints. The peer needs *Allow incoming traffic* for this device in Meshnet.
+
+**The data stays in the browser that opens the app.** Each device (and even each address: the `.nord` name and the IP count as two) has its own local storage. A phone that opens the app gets its own, separate tournament; it does **not** sync with the laptop, and the big screen only follows windows in the same browser. Use it to run the whole tournament on that device, and move a tournament between devices with *Export backup* / *Import backup*.
+
 ## Tests
 
 ```bash
@@ -68,7 +78,7 @@ The E2E run plays a 30-player / max-8 tournament (with a late sign-up, a kiosk l
 1. Open `index.html` on the laptop. Choose **New tournament** and walk through the 5 setup steps. The time estimate on the right updates as you go.
 2. Already have a guest list? **Players → Quick add**, paste the names (one per line).
 3. Plug in the TV. Press the **TV icon** in the top bar, drag the new window to the TV and **double-click it for fullscreen**. It updates by itself and has no buttons.
-4. Optional: open the **Kiosk** (tablet icon) on a second screen or tablet so people can sign up themselves ("Join the Race!").
+4. Optional: open the **Kiosk** (tablet icon) in a window on a second screen attached to the laptop so people can sign up themselves ("Join the Race!"). A separate tablet does not work: it would keep its own data.
 5. Press **Export backup** once so you have a starting point.
 
 **Check-in**

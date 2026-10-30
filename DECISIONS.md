@@ -103,7 +103,7 @@ e2e/             Playwright scripts that click through whole tournaments
 
 ## 11. Big Screen
 
-* Opens as a second window (`#/big`). It **only listens** and never writes storage, so two windows can't fight over the data. Sync: BroadcastChannel (primary) plus the `storage` event as a fallback for browsers that isolate `file://` pages.
+* Opens as a second window (`#/big`). It **only listens** and never writes storage, so two windows can't fight over the data. Sync: BroadcastChannel (primary) plus the `storage` event as a fallback for browsers that isolate `file://` pages. This only reaches windows of the **same browser on the same machine**; there is no network sync (no backend by spec). `npm run serve` makes the app reachable over Meshnet/LAN, but every device then has its own data.
 * Slides: "Now racing / Up next / Get ready" (16 s) and the leaderboard in pages of 10 (10 s each, top 30). The registration grid shows before round 1 and podium + final top 10 at the end. Between rounds the race slide is skipped. No controls; the cursor hides after 2 s; double-click toggles fullscreen.
 
 ## 12. Visual design, legal, accessibility
