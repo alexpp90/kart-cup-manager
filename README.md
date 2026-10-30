@@ -2,6 +2,32 @@
 
 A local tournament app for kart-racing nights on **one console**: sign-ups at a kiosk, balanced qualifying heats, live standings, a seeded finals bracket, a TV "big screen" and a podium ceremony with confetti. It runs on one laptop with no backend, no accounts and no internet.
 
+![Home screen: the heat that is racing now, with its cup and the queue](docs/screenshots/home-now-racing.webp)
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Kiosk sign-up "Join the Race!"](docs/screenshots/kiosk.webp) | ![Result entry: tap the finishing order, running heat total](docs/screenshots/result-entry.webp) |
+| **Kiosk sign-up** on a tablet: name, driver, color, racer card | **Result entry**: tap racers in finishing order, the last one fills in |
+| ![Round preview with repeat pairings and regenerate](docs/screenshots/round-preview.webp) | ![Heat cards of a finished round](docs/screenshots/rounds.webp) |
+| **Round preview** before saving, with repeat-pairing stats | **Rounds**: heat cards with cup, placings and points |
+| ![Live standings with position arrows and tiebreak tooltip](docs/screenshots/standings.webp) | ![Finals setup with stage editor and qualified seeds](docs/screenshots/finals-setup.webp) |
+| **Standings**: ▲▼ arrows, finals status, tiebreak tooltip | **Finals setup**: editable stages, seeded qualifiers |
+| ![Finals bracket with semifinals, Grand Final and champion](docs/screenshots/bracket.webp) | ![Podium ceremony](docs/screenshots/podium.webp) |
+| **Bracket**: semifinals → Grand Final → champion | **Podium ceremony** with confetti |
+| ![Cup roulette](docs/screenshots/cup-roulette.webp) | ![German interface](docs/screenshots/standings-german.webp) |
+| **Cup roulette** picks a cup per heat without repeats | **German UI**: one click on EN/DE |
+
+### Big screen (1080p, second window for the TV)
+
+| | |
+|---|---|
+| ![Big screen: now racing and up next](docs/screenshots/big-screen-now-racing.webp) | ![Big screen leaderboard](docs/screenshots/big-screen-leaderboard.webp) |
+| **Now racing / Up next** with the picked cup | **Leaderboard** pages rotate automatically |
+
+The screenshots come from a scripted demo run: `npm run build && npm run screenshots`.
+
 ## Run it
 
 ```bash

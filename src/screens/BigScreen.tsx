@@ -19,6 +19,8 @@ export function BigScreen() {
   const t = useT();
   const [tour, setTour] = useState<Tournament | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
+  // Bumped on every cup spin so the race slide gets its full time on screen again.
+  const [slideNonce, setSlideNonce] = useState(0);
   const [spin, setSpin] = useState<{ heatId: string; pick: CupPick } | null>(null);
   const lastCup = useRef<{ heatId: string; key: string } | null>(null);
 
@@ -64,7 +66,7 @@ export function BigScreen() {
     const ms = slide.kind === 'race' || slide.kind === 'podium' ? 16000 : 10000;
     const id = setTimeout(() => setSlideIdx((i) => (i + 1) % slides.length), ms);
     return () => clearTimeout(id);
-  }, [slideIdx, slideKey, slide.kind, slides.length]);
+  }, [slideIdx, slideNonce, slideKey, slide.kind, slides.length]);
 
   // Run the roulette on the TV when the organizer spins a cup for the next heat.
   const now = tour ? upcoming(tour)[0] : undefined;
@@ -76,6 +78,7 @@ export function BigScreen() {
     if (prev && prev.heatId === now.id && prev.key !== key && now.cup) {
       setSpin({ heatId: now.id, pick: now.cup });
       setSlideIdx(0);
+      setSlideNonce((n) => n + 1);
     }
   }, [now]);
 
@@ -194,7 +197,9 @@ function RaceSlide({ tour, now, next, ready }: { tour: Tournament; now?: Heat; n
         {[
           { h: next, label: t('home.upNext'), tone: 'blue' },
           { h: ready, label: t('home.getReady'), tone: 'navy' },
-        ].map(({ h, label, tone }) => (
+        ]
+          .filter(({ h }, i) => h || i === 0)
+          .map(({ h, label, tone }) => (
           <section key={label} className="big-queue">
             <h3 className={`ribbon ribbon-${tone}`}>{label}</h3>
             {h ? (
