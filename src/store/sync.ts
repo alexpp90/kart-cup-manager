@@ -3,7 +3,8 @@
 // file:// pages from each other.
 import type { Tournament } from '../engine/types';
 import type { Lang } from '../i18n';
-import { STORAGE_KEY, useApp } from './store';
+import { parsePersisted, PREFS_KEY, STORAGE_KEY } from './persist';
+import { useApp } from './store';
 
 const CHANNEL = 'kart-cup-manager';
 
@@ -35,9 +36,9 @@ export function startBroadcast(): () => void {
 export function listenForState(onState: (m: SyncMessage) => void): () => void {
   const read = () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const prefs = JSON.parse(localStorage.getItem('kart-cup-manager:prefs') ?? '{}');
-      if (raw) onState({ type: 'state', t: JSON.parse(raw).t ?? null, lang: prefs.lang ?? 'en' });
+      const r = parsePersisted(localStorage.getItem(STORAGE_KEY));
+      const prefs = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}');
+      if (r.kind === 'ok') onState({ type: 'state', t: r.data.t, lang: prefs.lang === 'de' ? 'de' : 'en' });
     } catch {
       /* ignore */
     }
@@ -52,7 +53,7 @@ export function listenForState(onState: (m: SyncMessage) => void): () => void {
     ch.postMessage({ type: 'hello' });
   }
   const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY || e.key === 'kart-cup-manager:prefs') read();
+    if (e.key === STORAGE_KEY || e.key === PREFS_KEY) read();
   };
   window.addEventListener('storage', onStorage);
   return () => {

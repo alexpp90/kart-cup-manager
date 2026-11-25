@@ -23,6 +23,4 @@ export function pickFile(accept: string): Promise<string | null> {
   });
 }
 
-export function slug(s: string): string {
-  return s.toLowerCase().normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '') || 'tournament';
-}
+export { slug } from '../store/persist';

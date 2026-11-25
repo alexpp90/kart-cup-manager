@@ -12,7 +12,8 @@ import { EstimateCard, PointsEditor } from './Setup';
 export function SettingsScreen() {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const { apply, replace, prefs, setPrefs, lastChangeAt, lastExportAt } = useApp();
+  const { apply, replace, prefs, setPrefs, changeSeq, exportSeq, lastExportAt } = useApp();
+  const unsaved = changeSeq > exportSeq;
   const [s, setS] = useState<Settings>(tour.settings);
   const patch = (p: Partial<Settings>) => setS((x) => ({ ...x, ...p }));
   const dirty = JSON.stringify(s) !== JSON.stringify(tour.settings);
@@ -35,7 +36,9 @@ export function SettingsScreen() {
     <div className="settings">
       <div className="page-head">
         <h1 className="display page-title">{t('settings.title')}</h1>
-        <span className="muted">💾 {t('settings.storage')}</span>
+        <span className="muted" data-testid="storage-origin">
+          💾 {t('settings.storage')} · {t('settings.origin', { origin: location.protocol === 'file:' ? 'file://' : location.origin })}
+        </span>
       </div>
       <div className="settings-grid">
         <div className="settings-main">
@@ -95,9 +98,9 @@ export function SettingsScreen() {
         <div className="settings-side">
           <EstimateCard s={s} patch={patch} players={players} />
           <Card title={t('settings.data')} tone="green">
-            <p className={lastChangeAt > lastExportAt ? 'notice notice-warn' : 'muted'}>
+            <p className={unsaved ? 'notice notice-warn' : 'muted'}>
               {lastExportAt ? t('settings.lastExport', { when: new Date(lastExportAt).toLocaleString(prefs.lang) }) : t('settings.neverExported')}
-              {lastChangeAt > lastExportAt && <> · {t('settings.unsaved')}</>}
+              {unsaved && <> · {t('settings.unsaved')}</>}
             </p>
             <div className="btn-col">
               <button className="btn btn-gold" onClick={exportBackup} data-testid="export-json">

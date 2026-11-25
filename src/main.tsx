@@ -19,7 +19,7 @@ if (parseHash(location.hash)[0] !== 'big') {
   startBroadcast();
   window.addEventListener('beforeunload', (e) => {
     const s = useApp.getState();
-    if (s.t && s.lastChangeAt > s.lastExportAt) {
+    if (s.t && s.changeSeq > s.exportSeq) {
       e.preventDefault();
       e.returnValue = translate(s.prefs.lang, 'leave.warning');
     }

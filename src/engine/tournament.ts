@@ -6,7 +6,7 @@ import { eliminatedCount, heatCountOf, lastChanceWinners, presetStages, snakeSee
 import { MIN_HEAT_SIZE, sizesAreValid, splitHeatSizes } from './heats';
 import { buildPairHistory, generatePairing, type PairingResult } from './pairing';
 import { DEFAULT_POINTS_4, DEFAULT_POINTS_8, pointsTable, scoreHeat } from './points';
-import { computeStandings, tieAcrossCut, type ScoredHeat, type StandingRow } from './ranking';
+import { computeStandings, minHeatsForFinals, tieAcrossCut, type ScoredHeat, type StandingRow } from './ranking';
 import { createRng, hashString, shuffle } from './rng';
 import type { CupPick, FinalsStage, Heat, HeatResult, HeatScore, Phase, Player, PlayerStatus, Round, Settings, StageConfig, SuddenDeath, Tournament } from './types';
 
@@ -198,6 +198,27 @@ export function withdrawPlayer(t: Tournament, id: string): Tournament {
   };
 }
 
+/**
+ * Can someone who signs up now still reach the finals? They need
+ * `ceil(rounds/2)` heats: the rounds not generated yet, plus a free slot in the
+ * current round if there is one. Returns what they would need and could get.
+ */
+export function finalsReachForNewPlayer(t: Tournament): { ok: boolean; needed: number; possible: number } {
+  const needed = minHeatsForFinals(t.settings.qualRounds);
+  if (t.finals) return { ok: false, needed, possible: 0 };
+  const possible = Math.max(0, t.settings.qualRounds - t.rounds.length) + (lateJoinSlots(t).length ? 1 : 0);
+  return { ok: possible >= needed, needed, possible };
+}
+
+/** A player can only be deleted while they were never put into a heat; afterwards it is "withdraw". */
+export function canDeletePlayer(t: Tournament, id: string): boolean {
+  return t.players.some((p) => p.id === id) && !allHeats(t).some((h) => h.playerIds.includes(id));
+}
+
+export function deletePlayer(t: Tournament, id: string): Tournament {
+  return canDeletePlayer(t, id) ? { ...t, players: t.players.filter((p) => p.id !== id) } : t;
+}
+
 /** Un-withdraw: the player rejoins from the next generated round. */
 export function reinstatePlayer(t: Tournament, id: string): Tournament {
   return updatePlayer(t, id, { status: 'checked-in', joinedRound: t.rounds.length });
@@ -301,8 +322,13 @@ export function saveHeatResult(t: Tournament, heatId: string, result: HeatResult
   return syncFinals(next, newId);
 }
 
+/**
+ * Delete a heat's result: the heat goes back into the queue and will be raced
+ * again, so players who withdrew since are taken out of it.
+ */
 export function clearHeatResult(t: Tournament, heatId: string, newId: IdGen): Tournament {
-  const next = mapHeat(t, heatId, (h) => ({ ...h, result: undefined, savedAt: undefined }));
+  const withdrawn = new Set(t.players.filter((p) => p.status === 'withdrawn').map((p) => p.id));
+  const next = mapHeat(t, heatId, (h) => ({ ...h, playerIds: h.playerIds.filter((id) => !withdrawn.has(id)), result: undefined, savedAt: undefined }));
   return syncFinals(next, newId);
 }
 

@@ -11,7 +11,7 @@
     "test": "vitest run --reporter=default --reporter=json --outputFile.json=reports/vitest.json",
     "test:watch": "vitest",
     "typecheck": "tsc -b",
-    "e2e": "playwright test",
+    "e2e": "npm run build && playwright test",
     "screenshots": "node e2e/readme-shots.mjs",
     "trace:check": "node scripts/trace-check.mjs"
   },

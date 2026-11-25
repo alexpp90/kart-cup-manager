@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { ConfirmHost, Toasts } from './components/Dialogs';
 import { PhaseBar } from './components/PhaseBar';
+import { StorageBanner } from './components/StorageBanner';
 import { TopBar } from './components/TopBar';
 import { useRoute } from './lib/router';
 import { BigScreen } from './screens/BigScreen';
@@ -9,6 +10,7 @@ import { Home } from './screens/Home';
 import { Kiosk } from './screens/Kiosk';
 import { Players } from './screens/Players';
 import { Podium } from './screens/Podium';
+import { Recovery } from './screens/Recovery';
 import { ResultEntry } from './screens/ResultEntry';
 import { Rounds } from './screens/Rounds';
 import { SettingsScreen } from './screens/Settings';
@@ -16,6 +18,7 @@ import { Setup } from './screens/Setup';
 import { Standings } from './screens/Standings';
 import { Welcome } from './screens/Welcome';
 import { useApp, useT } from './store/store';
+import { toast } from './store/ui';
 
 export function App() {
   const route = useRoute();
@@ -29,8 +32,25 @@ export function App() {
     window.scrollTo(0, 0);
   }, [route[0], route[1]]);
 
+  const recovery = useApp((s) => s.recovery);
+  const repairs = useApp((s) => s.repairs);
+  useEffect(() => {
+    if (repairs.length) toast(tr('data.repaired', { n: repairs.length }));
+    // Reported once per load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [page, arg] = route;
   if (page === 'big') return <BigScreen />;
+  if (recovery) {
+    return (
+      <>
+        <Recovery />
+        <ConfirmHost />
+        <Toasts />
+      </>
+    );
+  }
 
   let content;
   if (!t) content = page === 'setup' ? <Setup /> : <Welcome />;
@@ -78,6 +98,7 @@ export function App() {
         {tr('nav.skip')}
       </a>
       <TopBar route={page ?? ''} />
+      <StorageBanner />
       {t && page !== 'setup' && <PhaseBar t={t} />}
       <main id="main" className="main" tabIndex={-1}>
         {content}

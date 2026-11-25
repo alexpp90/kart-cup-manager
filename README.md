@@ -57,11 +57,19 @@ This builds and serves the app on port 4173 on all network interfaces. On anothe
 ## Tests
 
 ```bash
-npm test          # engine unit tests (Vitest)
-npm run build && npm run e2e   # full click-through tournaments, screenshots in e2e/out/
+npm test             # unit and property tests (Vitest), report in reports/vitest.json
+npm run e2e          # builds, then runs the Playwright specs in e2e/ against dist/index.html
+npm run trace:check  # requirements × tests → docs/traceability.md; fails on gaps
 ```
 
-The E2E run plays a 30-player / max-8 tournament (with a late sign-up, a kiosk late-joiner, a withdrawal and a reload mid-heat), then an 11-player / max-4 tournament with console totals and a Last Chance heat. It needs Chromium or Chrome installed (`/usr/bin/chromium` or `CHROMIUM_PATH=…`).
+* **Unit tests** cover the engine (including property tests over randomly played tournaments) and the persistence layer (autosave, full or blocked storage, corrupted data, schema versions, backups, undo, two windows).
+* **E2E** (`e2e/*.spec.ts`):
+  * `journey-30-max8` plays a 30-player / max-8 tournament from disk: a late sign-up, a kiosk late-joiner, a withdrawal, a reload and a tab close mid-heat, the big screen, finals, podium, exports, German.
+  * `journey-11-max4` plays 11 players / max 4 with console totals and a Last Chance heat.
+  * `data`, `a11y` and `build` check storage failures, recovery, import/export, keyboard use, reduced motion and that the single file makes no network requests.
+
+  It needs Chromium or Chrome installed (`/usr/bin/chromium` or `CHROMIUM_PATH=…`). Screenshots land in `e2e/out/`.
+* **Requirements:** every test names the requirement IDs it covers (`docs/requirements.md`). Visual checks are in `docs/manual-test.md`.
 
 ## Project layout
 

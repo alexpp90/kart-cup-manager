@@ -11,6 +11,7 @@ import { heatTitle, names } from '../lib/labels';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
 import { newId, tNow, useApp, useT } from '../store/store';
+import { DRAFT_PREFIX } from '../store/persist';
 import { confirmDialog, toast } from '../store/ui';
 
 interface Draft {
@@ -20,7 +21,14 @@ interface Draft {
   order: string[];
 }
 
-const draftKey = (id: string) => `kart-cup-manager:draft:${id}`;
+const draftKey = (id: string) => `${DRAFT_PREFIX}${id}`;
+const dropDraft = (id: string) => {
+  try {
+    localStorage.removeItem(draftKey(id));
+  } catch {
+    /* ignore: a stale draft is harmless */
+  }
+};
 
 function loadDraft(heatId: string): Draft | null {
   try {
@@ -95,7 +103,7 @@ export function ResultEntry({ heatId }: { heatId: string }) {
       return;
     }
     apply(tNow('action.saveHeat'), (x) => saveHeatResult(x, heat.id, result, Date.now(), newId));
-    localStorage.removeItem(draftKey(heatId));
+    dropDraft(heatId);
     sound.success();
     toast(t('result.saved'), 'success');
     back();
@@ -104,7 +112,7 @@ export function ResultEntry({ heatId }: { heatId: string }) {
   const clearSaved = async () => {
     if (await confirmDialog({ title: t('result.clearSaved'), body: t('result.clearConfirm'), danger: true })) {
       apply(tNow('action.clearHeat'), (x) => clearHeatResult(x, heat.id, newId));
-      localStorage.removeItem(draftKey(heatId));
+      dropDraft(heatId);
       setDraftState({ mode: tour.settings.entryMode, races: [], points: {}, order: [] });
       setRace(0);
     }

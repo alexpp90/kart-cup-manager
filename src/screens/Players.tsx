@@ -6,7 +6,7 @@ import { IconEdit, IconPlus, IconTablet } from '../components/Icons';
 import { LateJoiners } from '../components/LateJoiners';
 import { PlayerForm, randomDraft, type PlayerDraft } from '../components/PlayerForm';
 import { AVATARS, COLORS } from '../data/avatars';
-import { addPlayer, addPlayerToHeat, allHeats, isNameTaken, lateJoinSlots, normalizeName, reinstatePlayer, updatePlayer, withdrawPlayer } from '../engine/tournament';
+import { addPlayer, addPlayerToHeat, allHeats, deletePlayer, finalsReachForNewPlayer, isNameTaken, lateJoinSlots, normalizeName, reinstatePlayer, updatePlayer, withdrawPlayer } from '../engine/tournament';
 import type { Player, PlayerStatus } from '../engine/types';
 import { heatTitle } from '../lib/labels';
 import { go } from '../lib/router';
@@ -47,7 +47,7 @@ export function Players() {
   };
   const remove = async (p: Player) => {
     if (await confirmDialog({ title: t('common.delete'), body: t('players.deleteConfirm', { name: p.name }), danger: true, confirmLabel: t('common.delete') })) {
-      apply(tNow('action.deletePlayer', { name: p.name }), (x) => ({ ...x, players: x.players.filter((q) => q.id !== p.id) }));
+      apply(tNow('action.deletePlayer', { name: p.name }), (x) => deletePlayer(x, p.id));
     }
   };
 
@@ -172,7 +172,10 @@ function EditPlayer({ player, onClose, onAdded }: { player: Player | null; onClo
         const r = addPlayer(x, { ...draft, status: checkIn ? 'checked-in' : 'registered' }, id, Date.now());
         return r.ok ? r.t : x;
       });
-      const added = useApp.getState().t!.players.find((p) => p.id === id);
+      const state = useApp.getState().t!;
+      const added = state.players.find((p) => p.id === id);
+      const reach = finalsReachForNewPlayer(state);
+      if (added && !reach.ok) toast(t('signup.noFinals', { needed: reach.needed, possible: reach.possible }));
       if (added) onAdded(added);
     }
   };

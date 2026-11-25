@@ -3150,3 +3150,16 @@ body.hide-cursor * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Storage warnings and the recovery screen */
+.storage-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 16px 0;
+}
+.recovery .card {
+  max-width: 640px;
+  text-align: left;
+}

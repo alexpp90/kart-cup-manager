@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Coin, Flag, ItemBox, Star } from '../components/Icons';
 import { PlayerForm, randomDraft, type PlayerDraft } from '../components/PlayerForm';
-import { addPlayer, isNameTaken, phaseOf } from '../engine/tournament';
+import { addPlayer, finalsReachForNewPlayer, isNameTaken, phaseOf } from '../engine/tournament';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
 import { newId, tNow, useApp, useT } from '../store/store';
@@ -12,13 +12,13 @@ export function Kiosk() {
   const tour = useApp((s) => s.t)!;
   const [draft, setDraft] = useState<PlayerDraft>(randomDraft);
   const [error, setError] = useState('');
-  const [welcome, setWelcome] = useState<PlayerDraft | null>(null);
+  const [welcome, setWelcome] = useState<(PlayerDraft & { noFinals?: { needed: number; possible: number } }) | null>(null);
   const closed = tour.finals !== null;
   const count = tour.players.filter((p) => p.status !== 'withdrawn').length;
 
   useEffect(() => {
     if (!welcome) return;
-    const id = setTimeout(() => setWelcome(null), 3200);
+    const id = setTimeout(() => setWelcome(null), welcome.noFinals ? 7000 : 3200);
     return () => clearTimeout(id);
   }, [welcome]);
 
@@ -42,7 +42,8 @@ export function Kiosk() {
       return;
     }
     sound.fanfare();
-    setWelcome({ ...draft, name: r.player.name });
+    const reach = finalsReachForNewPlayer(useApp.getState().t!);
+    setWelcome({ ...draft, name: r.player.name, noFinals: reach.ok ? undefined : reach });
     setDraft(randomDraft());
   };
 
@@ -92,6 +93,11 @@ export function Kiosk() {
             <p>{t('kiosk.welcome')}</p>
             <strong className="display">{welcome.name}!</strong>
             <small>{t('kiosk.welcomeBody')}</small>
+            {welcome.noFinals && (
+              <p className="notice notice-warn" data-testid="no-finals">
+                {t('signup.noFinals', { needed: welcome.noFinals.needed, possible: welcome.noFinals.possible })}
+              </p>
+            )}
           </div>
         </div>
       )}
