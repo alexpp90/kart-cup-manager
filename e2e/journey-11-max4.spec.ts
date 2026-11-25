@@ -33,12 +33,12 @@ test.describe('[journey] 11 players, max 4, console totals', () => {
 
   test('[REQ-UI-015] a sign-up after qualifying is told they cannot reach the finals', async () => {
     await kioskRegister(page, url, 'Too Late Tom');
-    await expect(page.locator('[data-testid=no-finals]')).toContainText('cannot reach the finals');
+    await expect(page.locator('[data-testid=no-finals]')).toContainText('cannot reach the finals any more');
     await page.goto(url('players'));
     await page.click('[data-testid=add-player]');
     await page.fill('[data-testid=player-name]', 'Too Late Tina');
     await page.click('[data-testid=save-player]');
-    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'cannot reach the finals' }).first()).toBeVisible();
+    await expect(page.locator('.toast, [role=status]').filter({ hasText: 'cannot reach the finals any more' }).first()).toBeVisible();
   });
 
   test('[REQ-UI-011] the Last Chance heat runs before the first finals stage and fills the wildcard spot', async () => {
