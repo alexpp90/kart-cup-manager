@@ -37,7 +37,7 @@ function playOpen(t: Tournament, seed: number): Tournament {
 }
 
 describe('registration', () => {
-  it('requires unique names, case-insensitive', () => {
+  it('[REQ-ENG-024] requires unique names, case-insensitive', () => {
     const t = setup(1);
     expect(isNameTaken(t, '  player 1 ')).toBe(true);
     const r = addPlayer(t, { name: 'PLAYER 1', avatar: 'fox', color: '#000' }, 'x', 0);
@@ -45,7 +45,7 @@ describe('registration', () => {
     expect(addPlayer(t, { name: '   ', avatar: 'fox', color: '#000' }, 'x', 0)).toEqual({ ok: false, error: 'name-required' });
   });
 
-  it('only checked-in / active players are put into heats; they become active', () => {
+  it('[REQ-ENG-025] only checked-in / active players are put into heats; they become active', () => {
     let t = setup(8);
     const r = addPlayer(t, { name: 'No Show', avatar: 'fox', color: '#000', status: 'registered' }, 'ns', 0);
     if (!r.ok) throw new Error();
@@ -59,12 +59,12 @@ describe('registration', () => {
     expect(t.players.find((x) => x.id === 'ns')!.status).toBe('registered');
   });
 
-  it('blocks a round with fewer than 3 players', () => {
+  it('[REQ-ENG-003] blocks a round with fewer than 3 players', () => {
     const p = previewRound(setup(2), 1, newId, 0);
     expect(p).toEqual({ ok: false, error: 'too-few-players', count: 2 });
   });
 
-  it('gives a bye when 5 players race at max 4', () => {
+  it('[REQ-ENG-004] gives a bye when 5 players race at max 4', () => {
     const p = previewRound(setup(5, { maxPerHeat: 4 }), 1, newId, 0);
     if (!p.ok) throw new Error();
     expect(p.round.heats.map((h) => h.playerIds.length)).toEqual([4]);
@@ -73,7 +73,7 @@ describe('registration', () => {
 });
 
 describe('rounds', () => {
-  it('next round only once the current round is complete', () => {
+  it('[REQ-ENG-030] next round only once the current round is complete', () => {
     let t = setup(16);
     const p = previewRound(t, 1, newId, 0);
     if (!p.ok) throw new Error();
@@ -84,7 +84,7 @@ describe('rounds', () => {
     expect(previewRound(t, 4, newId, 0).ok).toBe(true);
   });
 
-  it('swaps unplayed heats and moves players only when sizes stay valid', () => {
+  it('[REQ-ENG-009][REQ-ENG-010] swaps unplayed heats and moves players only when sizes stay valid', () => {
     let t = setup(30);
     const p = previewRound(t, 1, newId, 0);
     if (!p.ok) throw new Error();
@@ -104,7 +104,7 @@ describe('rounds', () => {
 });
 
 describe('late registration', () => {
-  it('a late player joins from the next generated round, or an unplayed heat with room', () => {
+  it('[REQ-ENG-026] a late player joins from the next generated round, or an unplayed heat with room', () => {
     let t = setup(30);
     t = playRound(t, 1);
     const r = addPlayer(t, { name: 'Late Larry', avatar: 'fox', color: '#000', status: 'checked-in' }, 'late', 0);
@@ -132,7 +132,7 @@ describe('late registration', () => {
 });
 
 describe('withdrawal', () => {
-  it('removes the player from future heats but keeps past results', () => {
+  it('[REQ-ENG-028] removes the player from future heats but keeps past results', () => {
     let t = setup(30);
     t = playRound(t, 1);
     const before = standings(t).find((r) => r.playerId === 'p5')!;
@@ -146,7 +146,7 @@ describe('withdrawal', () => {
     expect(p.round.heats.flatMap((h) => h.playerIds)).toHaveLength(29);
   });
 
-  it('removes the player from an unplayed heat of the current round', () => {
+  it('[REQ-ENG-028] removes the player from an unplayed heat of the current round', () => {
     let t = setup(16);
     const p = previewRound(t, 1, newId, 0);
     if (!p.ok) throw new Error();
@@ -158,7 +158,7 @@ describe('withdrawal', () => {
 });
 
 describe('full tournaments', () => {
-  it('30 players, max 8: 3 rounds with a late join and a withdrawal → semis → grand final → podium', () => {
+  it('[REQ-ENG-017][REQ-ENG-035][REQ-ENG-038] 30 players, max 8: 3 rounds with a late join and a withdrawal → semis → grand final → podium', () => {
     let t = setup(30, { maxPerHeat: 8 });
     t = playRound(t, 1);
     const r = addPlayer(t, { name: 'Late', avatar: 'fox', color: '#000', status: 'checked-in' }, 'late', 0);
@@ -186,7 +186,7 @@ describe('full tournaments', () => {
     expect(res.slice(0, 3).map((x) => x.playerId)).toEqual(gf.slice(0, 3).map((s) => s.playerId));
   });
 
-  it('11 players, max 4, console totals and a Last Chance heat', () => {
+  it('[REQ-ENG-016][REQ-ENG-034] 11 players, max 4, console totals and a Last Chance heat', () => {
     let t = setup(11, { maxPerHeat: 4, entryMode: 'totals', lastChance: true, lastChanceWildcards: 1 });
     for (let k = 1; k <= 3; k++) t = playRound(t, k);
     const plan = finalsPlan(t);
@@ -204,7 +204,7 @@ describe('full tournaments', () => {
     expect(finalResults(t)!.slice(0, 4).every((x) => x.stageReached === 1)).toBe(true);
   });
 
-  it('editing a semifinal before the final is raced re-seeds the final', () => {
+  it('[REQ-ENG-036] editing a semifinal before the final is raced re-seeds the final', () => {
     let t = setup(16, { maxPerHeat: 8, qualRounds: 1 });
     t = playRound(t, 1);
     t = startFinals(t, finalsPlan(t).stages!, newId, 1);
@@ -219,7 +219,7 @@ describe('full tournaments', () => {
 });
 
 describe('time estimate', () => {
-  it('heats × races × minutes + changeover', () => {
+  it('[REQ-ENG-040] heats × races × minutes + changeover', () => {
     const e = estimateDuration(30, defaultSettings());
     expect(e.qualHeats).toBe(12);
     expect(e.finalsHeats).toBe(3);

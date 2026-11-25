@@ -4,7 +4,7 @@ import { cupPool, pickRandomCup, pickRandomTracks, remainingInCycle, trackPool }
 import { createRng } from './rng';
 
 describe('cup picker', () => {
-  it('has 12 base cups and 12 Booster Course Pass cups with 4 tracks each', () => {
+  it('[REQ-ENG-039] has 12 base cups and 12 Booster Course Pass cups with 4 tracks each', () => {
     expect(CUPS.filter((c) => !c.booster)).toHaveLength(12);
     expect(CUPS.filter((c) => c.booster)).toHaveLength(12);
     expect(CUPS.every((c) => c.tracks.length === 4)).toBe(true);
@@ -12,7 +12,7 @@ describe('cup picker', () => {
     expect(cupPool(CUPS, false)).toHaveLength(12);
   });
 
-  it('never repeats a cup until all have been used', () => {
+  it('[REQ-ENG-039] never repeats a cup until all have been used', () => {
     const pool = cupPool(CUPS, true);
     const rng = createRng(1);
     const used: string[] = [];
@@ -32,7 +32,7 @@ describe('cup picker', () => {
     }
   });
 
-  it('random tracks are distinct and avoid already used tracks', () => {
+  it('[REQ-ENG-039] random tracks are distinct and avoid already used tracks', () => {
     const tracks = trackPool(cupPool(CUPS, false));
     expect(tracks).toHaveLength(48);
     const used = tracks.slice(0, 44).map((t) => t.id);
@@ -41,7 +41,7 @@ describe('cup picker', () => {
     expect(p.trackIds.sort()).toEqual(tracks.slice(44).map((t) => t.id).sort());
   });
 
-  it('remainingInCycle', () => {
+  it('[REQ-ENG-039] remainingInCycle', () => {
     expect(remainingInCycle(['a', 'b', 'c'], ['a', 'b', 'c', 'a'])).toEqual(['b', 'c']);
   });
 });

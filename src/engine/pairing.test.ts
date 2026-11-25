@@ -5,7 +5,7 @@ import { splitHeatSizes } from './heats';
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
 
 describe('repeat score', () => {
-  it('sums squared previous meetings for each pair', () => {
+  it('[REQ-ENG-005] sums squared previous meetings for each pair', () => {
     const history = buildPairHistory([
       ['a', 'b', 'c'],
       ['a', 'b', 'd'],
@@ -18,7 +18,7 @@ describe('repeat score', () => {
     expect(repeatScore([['c', 'd', 'e']], history)).toBe(0);
   });
 
-  it('squares so a third meeting costs more than two second meetings', () => {
+  it('[REQ-ENG-005] squares so a third meeting costs more than two second meetings', () => {
     const h = buildPairHistory([['a', 'b'], ['a', 'b'], ['c', 'd'], ['e', 'f']]);
     expect(repeatScore([['a', 'b']], h)).toBe(4);
     expect(repeatScore([['c', 'd'], ['e', 'f']], h)).toBe(2);
@@ -26,7 +26,7 @@ describe('repeat score', () => {
 });
 
 describe('generatePairing', () => {
-  it('places every player exactly once with the requested sizes', () => {
+  it('[REQ-ENG-006][REQ-ENG-041] places every player exactly once with the requested sizes', () => {
     const players = ids(30);
     const r = generatePairing({ players, sizes: [8, 8, 7, 7], history: new Map(), seed: 1 });
     expect(r.groups.map((g) => g.length).sort()).toEqual([7, 7, 8, 8]);
@@ -34,13 +34,13 @@ describe('generatePairing', () => {
     expect(r.repeatScore).toBe(0);
   });
 
-  it('is deterministic for a seed', () => {
+  it('[REQ-ENG-006] is deterministic for a seed', () => {
     const a = generatePairing({ players: ids(20), sizes: [7, 7, 6], history: new Map(), seed: 42 });
     const b = generatePairing({ players: ids(20), sizes: [7, 7, 6], history: new Map(), seed: 42 });
     expect(a.groups).toEqual(b.groups);
   });
 
-  it('avoids repeats far better than a naive split', () => {
+  it('[REQ-ENG-006] avoids repeats far better than a naive split', () => {
     const players = ids(30);
     const split = splitHeatSizes(30, 8);
     if (!split.ok) throw new Error();
@@ -55,14 +55,14 @@ describe('generatePairing', () => {
     expect(r3.repeatScore).toBeLessThanOrEqual(30);
   });
 
-  it('finds a perfect zero-repeat round when one exists (max 4, 16 players)', () => {
+  it('[REQ-ENG-006] finds a perfect zero-repeat round when one exists (max 4, 16 players)', () => {
     const players = ids(16);
     const r1 = generatePairing({ players, sizes: [4, 4, 4, 4], history: new Map(), seed: 9 });
     const r2 = generatePairing({ players, sizes: [4, 4, 4, 4], history: buildPairHistory(r1.groups), seed: 10 });
     expect(r2.repeatScore).toBe(0);
   });
 
-  it('keeps players from the previous last heat out of the first heat when possible', () => {
+  it('[REQ-ENG-008] keeps players from the previous last heat out of the first heat when possible', () => {
     const players = ids(16);
     const avoidFirst = players.slice(0, 8);
     const r = generatePairing({ players, sizes: [8, 8], history: new Map(), avoidFirst, seed: 7 });
@@ -70,7 +70,7 @@ describe('generatePairing', () => {
     expect(r.groups[0].some((p) => avoidFirst.includes(p))).toBe(false);
   });
 
-  it('spreads the strongest players across heats (light seeding)', () => {
+  it('[REQ-ENG-007] spreads the strongest players across heats (light seeding)', () => {
     const players = ids(24);
     const r = generatePairing({ players, sizes: [8, 8, 8], history: new Map(), seedOrder: players, seed: 11 });
     const top3 = ['p1', 'p2', 'p3'];

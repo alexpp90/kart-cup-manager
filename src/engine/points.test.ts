@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { autoCompleteOrder, DEFAULT_POINTS_4, DEFAULT_POINTS_8, orderFromTotals, orderPerRace, perRaceTotals, pointsForPlace, scoreHeat, totalsTieGroups, validateOrder, validateResult } from './points';
 
 describe('points tables', () => {
-  it('has the default tables', () => {
+  it('[REQ-ENG-011] has the default tables', () => {
     expect(DEFAULT_POINTS_8).toEqual([15, 12, 10, 8, 6, 4, 2, 1]);
     expect(DEFAULT_POINTS_4).toEqual([10, 6, 3, 1]);
     expect(pointsForPlace(DEFAULT_POINTS_8, 1)).toBe(15);
@@ -13,12 +13,12 @@ describe('points tables', () => {
 
 describe('per-race entry (mode A)', () => {
   const players = ['a', 'b', 'c', 'd'];
-  it('auto-fills the last finisher', () => {
+  it('[REQ-ENG-013] auto-fills the last finisher', () => {
     expect(autoCompleteOrder(['b', 'a', 'd'], players)).toEqual(['b', 'a', 'd', 'c']);
     expect(autoCompleteOrder(['b', 'a'], players)).toEqual(['b', 'a']);
   });
 
-  it('sums points over races', () => {
+  it('[REQ-ENG-013] sums points over races', () => {
     const races = [
       ['a', 'b', 'c', 'd'],
       ['b', 'a', 'd', 'c'],
@@ -26,7 +26,7 @@ describe('per-race entry (mode A)', () => {
     expect(perRaceTotals(races, players, DEFAULT_POINTS_4)).toEqual({ a: 16, b: 16, c: 4, d: 4 });
   });
 
-  it('breaks equal totals by countback then last race', () => {
+  it('[REQ-ENG-015] breaks equal totals by countback then last race', () => {
     const races = [
       ['a', 'b', 'c', 'd'],
       ['b', 'a', 'd', 'c'],
@@ -40,7 +40,7 @@ describe('per-race entry (mode A)', () => {
     expect(orderPerRace(races2, players, DEFAULT_POINTS_4)).toEqual(['b', 'a', 'c', 'd']);
   });
 
-  it('a 3-player heat uses the top of the 4-player table', () => {
+  it('[REQ-ENG-012] a 3-player heat uses the top of the 4-player table', () => {
     const s = scoreHeat({ id: 'h', playerIds: ['a', 'b', 'c'], result: { mode: 'per-race', races: [['c', 'a', 'b']] } }, DEFAULT_POINTS_4)!;
     expect(s).toEqual([
       { playerId: 'c', points: 10, place: 1 },
@@ -49,7 +49,7 @@ describe('per-race entry (mode A)', () => {
     ]);
   });
 
-  it('validates duplicates, missing and unknown players', () => {
+  it('[REQ-ENG-014] validates duplicates, missing and unknown players', () => {
     expect(validateOrder(['a', 'b', 'c', 'd'], players)).toEqual([]);
     const errs = validateOrder(['a', 'a', 'x'], players);
     expect(errs.map((e) => e.code).sort()).toEqual(['duplicate', 'missing', 'unknown']);
@@ -57,7 +57,7 @@ describe('per-race entry (mode A)', () => {
     expect(r[0]).toEqual({ code: 'race-count', expected: 4, actual: 1 });
   });
 
-  it('scores a full 8-player cup', () => {
+  it('[REQ-ENG-011][REQ-ENG-013] scores a full 8-player cup', () => {
     const p8 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
     const races = [p8, p8, p8, p8.slice().reverse()];
     const s = scoreHeat({ id: 'h', playerIds: p8, result: { mode: 'per-race', races } }, DEFAULT_POINTS_8)!;
@@ -70,21 +70,21 @@ describe('per-race entry (mode A)', () => {
 
 describe('console totals entry (mode B)', () => {
   const players = ['a', 'b', 'c'];
-  it('orders by totals and keeps manual tie order', () => {
+  it('[REQ-ENG-016] orders by totals and keeps manual tie order', () => {
     const points = { a: 30, b: 42, c: 30 };
     expect(orderFromTotals(points, players)).toEqual(['b', 'a', 'c']);
     expect(orderFromTotals(points, players, ['c', 'b', 'a'])).toEqual(['b', 'c', 'a']);
     expect(totalsTieGroups(points, players)).toEqual([['a', 'c']]);
   });
 
-  it('validates numbers and order consistency', () => {
+  it('[REQ-ENG-014] validates numbers and order consistency', () => {
     expect(validateResult({ mode: 'totals', points: { a: 30, b: 42, c: 12 }, order: ['b', 'a', 'c'] }, players, 4)).toEqual([]);
     expect(validateResult({ mode: 'totals', points: { a: 30, b: Number.NaN, c: 12 }, order: ['b', 'a', 'c'] }, players, 4)[0].code).toBe('not-a-number');
     expect(validateResult({ mode: 'totals', points: { a: 30, b: 42, c: 12 }, order: ['a', 'b', 'c'] }, players, 4)[0].code).toBe('duplicate');
     expect(validateResult({ mode: 'totals', points: { a: 30, b: 42, c: 12 }, order: ['b', 'a'] }, players, 4)[0].code).toBe('missing');
   });
 
-  it('scores with the typed console points', () => {
+  it('[REQ-ENG-016] scores with the typed console points', () => {
     const s = scoreHeat({ id: 'h', playerIds: players, result: { mode: 'totals', points: { a: 30, b: 42, c: 30 }, order: ['b', 'c', 'a'] } }, DEFAULT_POINTS_8)!;
     expect(s).toEqual([
       { playerId: 'b', points: 42, place: 1 },

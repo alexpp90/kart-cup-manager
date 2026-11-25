@@ -3,14 +3,14 @@ import { finalStandings, presetStages, snakeSeed, splitStageOutcome, validateSta
 import type { FinalsStage, HeatScore } from './types';
 
 describe('finals stages', () => {
-  it('max 8 preset: Top 16 → 2 semis of 8 → top 4 → Grand Final of 8', () => {
+  it('[REQ-ENG-033] max 8 preset: Top 16 → 2 semis of 8 → top 4 → Grand Final of 8', () => {
     expect(presetStages(8, 30)).toEqual([
       { name: 'stage.semi', fieldSize: 16, heatSize: 8, advancePerHeat: 4, wildcards: 0 },
       { name: 'stage.grand', fieldSize: 8, heatSize: 8, advancePerHeat: 0, wildcards: 0 },
     ]);
   });
 
-  it('max 4 preset: Top 16 → 4 QF → top 2 → 2 SF → top 2 → Final of 4', () => {
+  it('[REQ-ENG-033] max 4 preset: Top 16 → 4 QF → top 2 → 2 SF → top 2 → Final of 4', () => {
     expect(presetStages(4, 20)!.map((s) => [s.fieldSize, s.heatSize, s.advancePerHeat])).toEqual([
       [16, 4, 2],
       [8, 4, 2],
@@ -18,7 +18,7 @@ describe('finals stages', () => {
     ]);
   });
 
-  it('small fields get a sensible automatic preset', () => {
+  it('[REQ-ENG-033] small fields get a sensible automatic preset', () => {
     expect(presetStages(8, 10)!.map((s) => s.fieldSize)).toEqual([8]);
     expect(presetStages(8, 13)!.map((s) => s.fieldSize)).toEqual([12, 8]);
     expect(presetStages(8, 5)!.map((s) => s.fieldSize)).toEqual([5]);
@@ -29,7 +29,7 @@ describe('finals stages', () => {
   });
 
   for (const max of [4, 8] as const) {
-    it(`every automatic preset validates (max ${max}, 3..64 eligible, with and without Last Chance)`, () => {
+    it(`[REQ-ENG-033][REQ-ENG-031] every automatic preset validates (max ${max}, 3..64 eligible, with and without Last Chance)`, () => {
       for (let n = 3; n <= 64; n++) {
         for (const lc of [false, true]) {
           const stages = presetStages(max, n, lc, 2)!;
@@ -39,14 +39,14 @@ describe('finals stages', () => {
     });
   }
 
-  it('adds Last Chance wildcards to the first stage when the pool is big enough', () => {
+  it('[REQ-ENG-034] adds Last Chance wildcards to the first stage when the pool is big enough', () => {
     const s = presetStages(8, 24, true, 2)!;
     expect(s[0].wildcards).toBe(2);
     expect(presetStages(8, 17, true, 2)![0].wildcards).toBe(2); // 14 direct, pool of 3 → a real heat
     expect(presetStages(8, 16, true, 2)![0].wildcards).toBe(0); // pool of 2 is too small → no Last Chance
   });
 
-  it('reports configurations that do not add up', () => {
+  it('[REQ-ENG-031] reports configurations that do not add up', () => {
     const codes = (stages: Parameters<typeof validateStages>[0], eligible = 30, max: 4 | 8 = 8) =>
       validateStages(stages, { maxPerHeat: max, eligible }).map((e) => e.code);
     expect(codes([])).toEqual(['no-stages']);
@@ -62,7 +62,7 @@ describe('finals stages', () => {
 });
 
 describe('snake seeding', () => {
-  it('deals 1,4,5,8… / 2,3,6,7…', () => {
+  it('[REQ-ENG-032] deals 1,4,5,8… / 2,3,6,7…', () => {
     const seeds = Array.from({ length: 16 }, (_, i) => i + 1);
     expect(snakeSeed(seeds, 2)).toEqual([
       [1, 4, 5, 8, 9, 12, 13, 16],
@@ -86,13 +86,13 @@ describe('advancement and final standings', () => {
   };
   const semiScores = [sc(['s1', 's8', 's4', 's5'], [40, 30, 20, 10]), sc(['s7', 's2', 's3', 's6'], [40, 35, 20, 10])];
 
-  it('advances heat place first, then points, then seed', () => {
+  it('[REQ-ENG-035] advances heat place first, then points, then seed', () => {
     const { advancing, eliminated } = splitStageOutcome(semi, semiScores);
     expect(advancing).toEqual(['s1', 's7', 's2', 's8']);
     expect(eliminated).toEqual(['s3', 's4', 's5', 's6']);
   });
 
-  it('Grand Final placement decides the podium, earlier exits follow', () => {
+  it('[REQ-ENG-038] Grand Final placement decides the podium, earlier exits follow', () => {
     const final: FinalsStage = { config: { name: 'stage.final', fieldSize: 4, heatSize: 4, advancePerHeat: 0, wildcards: 0 }, seeds: [], heats: [] };
     const rows = finalStandings([semi, final], [semiScores, [sc(['s8', 's1', 's7', 's2'], [40, 30, 20, 10])]], [null, null], ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 'q9']);
     expect(rows.map((r) => r.playerId)).toEqual(['s8', 's1', 's7', 's2', 's3', 's4', 's5', 's6', 'q9']);

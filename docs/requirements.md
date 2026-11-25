@@ -1,0 +1,165 @@
+# Requirements
+
+Every requirement of `docs/spec.md` (the original brief, read-only) and every rule of `DECISIONS.md`
+has a stable ID. Tests name the IDs they cover in their title, e.g.
+`it('[REQ-ENG-004] bye only for 5 at max 4', …)`. `npm run trace:check` reads the table below,
+scans the tests and writes `docs/traceability.md`. It **fails if a `must` requirement tagged `auto`
+has no test**. Requirements tagged `manual` are verified with the checklist in `docs/manual-test.md`.
+
+Columns: **ID** · statement · **source** (`Spec` = section of docs/spec.md, `D§n` = DECISIONS.md section) ·
+**priority** (`must` / `should`) · **kind** (`auto` / `manual`).
+
+> Table format is machine-read. Keep one requirement per row, keep the five columns.
+
+## Engine (REQ-ENG)
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-ENG-001 | Number of heats in a round is `ceil(n / max)` for n = 3..64 at max 4 and 8. | Spec: Engine › Heat splitting; D§3 | must | auto |
+| REQ-ENG-002 | Heat sizes differ by at most 1, bigger heats first (30@8 → 8,8,7,7; 30@4 → 4×6 + 3×2). | Spec: Engine › Heat splitting; D§3 | must | auto |
+| REQ-ENG-003 | No heat has fewer than 3 players; fewer than 3 players cannot make a round and the user gets a clear message. | Spec: Engine › Heat splitting; D§3 | must | auto |
+| REQ-ENG-004 | 5 players at max 4 (only case where 3+2 would appear): one player sits out (bye) and 4 race; the bye goes to whoever played the most heats. | D§3 | must | auto |
+| REQ-ENG-005 | Pairing repeat score is the sum over all pairs of (previous meetings)². | Spec: Engine › Pairing; D§4 | must | auto |
+| REQ-ENG-006 | Pairing uses a greedy pass with randomized restarts (200) and a swap polish; it is deterministic for a given seed and reduces repeats vs. a naive split. | Spec: Engine › Pairing; D§4 | must | auto |
+| REQ-ENG-007 | From round 2 on, the strongest players are spread across heats (light seeding by current rank). | Spec: Engine › Pairing; D§4 | should | auto |
+| REQ-ENG-008 | Where possible a player from the previous round's last heat is not in the new first heat (no back-to-back). | Spec: Engine › Pairing; D§4 | should | auto |
+| REQ-ENG-009 | Heats have a play order and a queue; the organizer can swap the order of unplayed heats only. | Spec: Engine › Heat order | must | auto |
+| REQ-ENG-010 | A player can be moved between two unplayed heats of the same round only if every heat stays within 3..max and the size spread does not grow. | Spec: Engine › Heat order; D§5 | must | auto |
+| REQ-ENG-011 | Default points: 8-player heats 15-12-10-8-6-4-2-1, 4-player heats 10-6-3-1; both tables are editable. | Spec: Engine › Points; D§6 | must | auto |
+| REQ-ENG-012 | Heats smaller than the max use the top of the points table. | D§6 | must | auto |
+| REQ-ENG-013 | Per-race entry: the last finisher is filled in automatically; running heat total = sum of race points. | Spec: Engine › Result entry A | must | auto |
+| REQ-ENG-014 | Result validation: no duplicate places, everyone ranked, no unknown players, for both entry modes. | Spec: Engine › Result entry | must | auto |
+| REQ-ENG-015 | Per-race equal heat totals are split by countback (more 1sts, 2nds, …) then last race, so a per-race heat always has a unique placing. | D§6 | must | auto |
+| REQ-ENG-016 | Console-totals entry uses the typed points as-is; equal totals are ordered by the organizer (manual tie order is kept). | Spec: Engine › Result entry B; D§6 | must | auto |
+| REQ-ENG-017 | Any saved heat can be edited or cleared and all standings, heat placings and the bracket recompute from raw results. | Spec: Engine › Result entry; D§1 | must | auto |
+| REQ-ENG-018 | Qualifying rank is by average points per heat played (exact comparison), so late joiners are not punished. | Spec: Engine › Ranking; D§7 | must | auto |
+| REQ-ENG-019 | Finals eligibility needs at least `ceil(rounds/2)` heats and a non-withdrawn player. | Spec: Engine › Ranking; D§7 | must | auto |
+| REQ-ENG-020 | Tiebreakers in order: average → heat wins → best single heat → head-to-head → sudden death. | Spec: Engine › Ranking; D§7 | must | auto |
+| REQ-ENG-021 | Sudden death is demanded only when an unresolved tie straddles the finals cut or the Last Chance cut; elsewhere tied players share a rank. | D§7 | must | auto |
+| REQ-ENG-022 | Every tie result carries its deciding reason (criterion + both values) for the tooltip. | Spec: Engine › Ranking; D§7 | should | auto |
+| REQ-ENG-023 | Position change arrows compare to the standings before the latest round with results; first-time players are "New". | Spec: Screens › Standings; D§7 | should | auto |
+| REQ-ENG-024 | Names are unique ignoring case and surplus spaces; empty names are rejected. | Spec: Core flow › Registration; D§5 | must | auto |
+| REQ-ENG-025 | Only checked-in/active players go into a generated round; they become active when the round is saved; registered no-shows are listed as skipped. | D§5 | must | auto |
+| REQ-ENG-026 | A late player joins from the next generated round (`joinedRound`); if the current round has an unplayed heat below max, that slot is offered and can be accepted. | Spec: Engine › Late registration; D§5 | must | auto |
+| REQ-ENG-027 | A player who registers after qualifying ended cannot enter the finals (no heats → not eligible). | Spec: Core flow › Registration; D§5, D§7 | must | auto |
+| REQ-ENG-028 | Withdrawal removes the player from every unplayed heat and all future rounds; past results stay on record and in standings. | Spec: Engine › Withdrawal; D§5 | must | auto |
+| REQ-ENG-029 | A withdrawn player can be reinstated and rejoins with the next generated round; a player can only be deleted while they never raced. | D§5 | must | auto |
+| REQ-ENG-030 | The next round can only be generated when the current round is complete, and not beyond the planned number of rounds or after finals started. | Spec: Screens › Round view; D§8 | must | auto |
+| REQ-ENG-031 | Finals stage config `{name, fieldSize, heatSize, advancePerHeat, wildcards}` is validated (numbers add up, heat size 3..max, last stage = one heat, enough players, Last Chance pool ≥ 3). | Spec: Engine › Finals; D§8 | must | auto |
+| REQ-ENG-032 | Snake seeding distributes 1,4,5,8… / 2,3,6,7… | Spec: Engine › Finals; D§8 | must | auto |
+| REQ-ENG-033 | Presets: max 8 Top 16 → 2 semis → GF of 8; max 4 Top 16 → 4 QF → 2 SF → Final of 4; small fields choose a valid preset automatically (valid for 3..64 eligible, with/without Last Chance). | Spec: Engine › Finals; D§8 | must | auto |
+| REQ-ENG-034 | Optional Last Chance heat: best non-qualifiers race for 1–2 wildcard spots; auto-off if the pool is too small. | Spec: Engine › Finals; D§8 | must | auto |
+| REQ-ENG-035 | Finals points start fresh: advancement is by placing inside the heat, then points, then previous seed; Grand Final placing decides the podium. | Spec: Engine › Finals; D§8 | must | auto |
+| REQ-ENG-036 | Editing an earlier finals result re-seeds a later stage as long as that stage has not been raced. | D§8 | must | auto |
+| REQ-ENG-037 | Finals can start once the current round is complete (warning if fewer rounds than planned); finals can be cancelled while no finals heat has a result; an extra qualifying round can be added. | D§8 | should | auto |
+| REQ-ENG-038 | Final standings: Grand Final places, then earlier knockouts (later stage first), then Last Chance losers, then the rest in qualifying order. | D§8 | must | auto |
+| REQ-ENG-039 | Cup picker modes none / random cup / random 4 tracks / organizer picks; Booster Course Pass toggles 12 vs 24 cups; no repeats until all are used, derived from heats so undo/edit stay consistent. | Spec: Engine › Track/cup picker; D§9 | must | auto |
+| REQ-ENG-040 | Time estimate = heats × races × minutes per race + changeover per heat. | Spec: Core flow › Setup; D§13 | must | auto |
+| REQ-ENG-041 | Every active checked-in player sits in exactly one heat per round (or has the documented bye), for any player count 4–64, with late joins/withdrawals/edits. | Spec: Engine; D§3, D§5 (property) | must | auto |
+| REQ-ENG-042 | Heat sizes stay valid (3..max, spread ≤ 1) in every generated round. | Spec: Engine; D§3 (property) | must | auto |
+| REQ-ENG-043 | No withdrawn player appears in any unplayed or future heat. | Spec: Engine › Withdrawal (property) | must | auto |
+| REQ-ENG-044 | Standings are deterministic and identical when recomputed after any result edit and revert. | D§1, D§7 (property) | must | auto |
+| REQ-ENG-045 | Points sums per heat equal the points table for the placings (both entry modes). | Spec: Engine › Points (property) | must | auto |
+| REQ-ENG-046 | Finals seeding follows the qualifying standings (snake over the ranked eligible players). | Spec: Engine › Finals (property) | must | auto |
+| REQ-ENG-047 | CSV export: UTF-8 BOM, comma separated, localized headers, one row per player with rank, played, points, average, wins, best, eligible, status; quotes/commas/emoji in names are escaped. | Spec: Tech; D§10 | must | auto |
+| REQ-ENG-048 | "Load demo data" creates 30 fake racers with round 1 simulated. | Spec: Screens › Settings; D§13 | should | auto |
+| REQ-ENG-049 | Engine functions are pure: they never mutate their input tournament. | Spec: Tech; D§1 | must | auto |
+
+## UI and journeys (REQ-UI)
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-UI-001 | Setup wizard collects name, date, max per heat, races, qualifying rounds, finals format, points table, entry mode, track mode, and shows a live time estimate. | Spec: Core flow 1 | must | auto |
+| REQ-UI-002 | Kiosk "Join the Race!": name (required, unique), tag, avatar + color, favourite; kiosk sign-ups are checked in automatically (setting). | Spec: Core flow 2; D§5 | must | auto |
+| REQ-UI-003 | Quick add: paste names one per line; duplicates and blanks are skipped; option to check in right away. | Spec: Core flow 2; D§5 | must | auto |
+| REQ-UI-004 | Players screen: list, search, check-in toggle, edit, withdraw (with confirmation), reinstate. | Spec: Screens 2 | must | auto |
+| REQ-UI-005 | Home shows the phase indicator, the next heat in large letters ("Now racing"), "Up next", and quick actions. | Spec: Screens 1 | must | auto |
+| REQ-UI-006 | Round view: heat cards with avatars/cup/status; preview with "regenerate" before saving; the next round only when the current one is complete. | Spec: Screens 3 | must | auto |
+| REQ-UI-007 | Result entry per race: tap in finishing order, running heat total, next race opens automatically; fully usable by keyboard (1–9, Backspace). | Spec: Screens 4; D§6 | must | auto |
+| REQ-UI-008 | Result entry console totals, with tie-order arrows when totals are equal; the mode can be switched per heat. | Spec: Screens 4; D§6 | must | auto |
+| REQ-UI-009 | Standings: live leaderboard with ▲▼ arrows, qualification cut line, finals status and tie tooltip. | Spec: Screens 5 | must | auto |
+| REQ-UI-010 | Finals screen: editable stage table, qualified seeds, sudden-death dialog for cut ties, start finals (confirmed), visual bracket. | Spec: Screens 6; D§8 | must | auto |
+| REQ-UI-011 | Last Chance heat appears before the first finals stage and its winners fill the wildcard spots. | Spec: Engine › Finals | must | auto |
+| REQ-UI-012 | Podium ceremony: top 3 podium with confetti and the final standings table. | Spec: Screens 8 | must | auto |
+| REQ-UI-013 | Cup roulette animation shows the picked cup/tracks; the pick happens on "Spin". | Spec: Engine › Track/cup picker; D§9 | must | auto |
+| REQ-UI-014 | Late arrivals: organizer-added players get a dialog offering the free slot; kiosk sign-ups show a "Late arrivals" banner. | D§5 | must | auto |
+| REQ-UI-015 | A player who signs up after qualifying ended is told they will not be in the finals and why. | Spec: Core flow 2; D§5 | must | auto |
+| REQ-UI-016 | Big screen (`#/big`): second window, only listens and never writes storage, shows Now racing/Up next, leaderboard pages, registration grid, roulette and podium; no controls. | Spec: Screens 7; D§11 | must | auto |
+| REQ-UI-017 | Big screen survives being closed and reopened mid-heat and follows the live state. | Spec: Screens 7; D§11 | must | auto |
+| REQ-UI-018 | Settings screen: edit settings (max per heat locked once a round exists), export/import JSON, export CSV, reset (type the name), demo data, sound, language. | Spec: Screens 9; D§13 | must | auto |
+| REQ-UI-019 | Moving a racer and swapping heat order are available on unplayed heat cards. | Spec: Engine › Heat order | must | auto |
+| REQ-UI-020 | Very long, emoji and RTL names render without breaking layout or functions. | Quality bar (robustness) | should | auto |
+| REQ-UI-021 | Layouts work at 1366×768 (organizer), tablet (kiosk) and 1080p (big screen). | Spec: Visual › Layouts | should | auto |
+| REQ-UI-022 | Palette tokens (red #E60012, sky blue, gold, green, navy), Lilita One + Nunito, pill buttons with 3D shadow, tilted ribbons, checkered accents: bright, bouncy, "Nintendo-like" but original. | Spec: Visual design; D§12 | should | manual |
+| REQ-UI-023 | Springy micro-animations (button press, card entry, leaderboard reorder, roulette, confetti) feel good. | Spec: Visual › Motion | should | manual |
+| REQ-UI-024 | No official logos, sprites, fonts or audio; app name contains neither "Mario" nor "Nintendo"; the single-file build makes no external network requests. | Spec: Visual › Legal | must | auto |
+| REQ-UI-025 | Sound is optional, off by default, synthesized; toggling it is remembered and does not touch tournament data. | Spec: Visual › Sound; D§12 | should | auto |
+| REQ-UI-026 | Time estimate and "time left" are shown on setup and Home. | D§13 | should | auto |
+
+## Data and persistence (REQ-DATA)
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-DATA-001 | Every change is autosaved to localStorage immediately; reload loses nothing confirmed. | Spec: Tech; Quality bar | must | auto |
+| REQ-DATA-002 | A tab close or browser kill at any step of a heat entry loses no confirmed (saved) result. | Task §4 | must | auto |
+| REQ-DATA-003 | Half-entered heats are kept as per-heat drafts and restore after reload/kill, in both entry modes. | D§6 | must | auto |
+| REQ-DATA-004 | Two windows of the app edit the same tournament without silent loss: writes are serialized through storage, the other window adopts newer data live and tells the user. | Task §4 | must | auto |
+| REQ-DATA-005 | localStorage full: no crash, oldest undo snapshots are dropped first, and if the tournament itself cannot be saved a persistent warning offers a backup export; existing stored data is not wiped. | Spec: Tech; D§10 | must | auto |
+| REQ-DATA-006 | localStorage unavailable/throwing (private mode): no crash, the app works in memory, shows a clear message and keeps export possible. | Task §4 | must | auto |
+| REQ-DATA-007 | Corrupted stored JSON: no crash, no wipe; a recovery screen offers downloading the damaged data, importing a backup or starting fresh; a copy is kept. | Task §4 | must | auto |
+| REQ-DATA-008 | Valid JSON with missing fields is repaired with defaults (and reported); structurally broken data goes to the recovery path instead of crashing. | Task §4 | must | auto |
+| REQ-DATA-009 | Data carries a schema `version`; older/unversioned backups migrate to the current schema; backups from a newer app are rejected with a clear message. | Task §4 | must | auto |
+| REQ-DATA-010 | Export → wipe → import is lossless (deep-equal tournament). | Spec: Tech; Task §4 | must | auto |
+| REQ-DATA-011 | Importing an invalid or foreign file is rejected with a message without touching current data. | Spec: Tech; Task §4 | must | auto |
+| REQ-DATA-012 | Import asks for confirmation before overwriting an existing tournament. | Spec: Tech (destructive confirm); D§10 | must | auto |
+| REQ-DATA-013 | Undo keeps the last 30 snapshots, shows what will be undone, and the history survives a reload. | Spec: Tech; D§10 | must | auto |
+| REQ-DATA-014 | Undo across import, reset, demo and finals start reverts that action as exactly one step (documented). | D§10 | must | auto |
+| REQ-DATA-015 | Leave warning appears only when changes are newer than the last export (importing counts as exported). | Spec: Tech; D§10 | must | auto |
+| REQ-DATA-016 | Different origins keep separate data (file:// vs http://, `.nord` name vs IP); this is documented and the current origin is shown in Settings. | Task §4; D§11 | must | auto |
+| REQ-DATA-017 | Ids, change tracking and the leave warning do not depend on the system clock being correct. | Task §4 | must | auto |
+| REQ-DATA-018 | Backup format `{app, version, exportedAt, tournament}`; CSV and JSON file names are slugged. | D§10 | must | auto |
+| REQ-DATA-019 | Destructive actions (withdraw, delete player/result, import, demo, cancel/start finals, reset) go through a confirmation dialog; reset requires typing the name. | Spec: Tech; D§10 | must | auto |
+| REQ-DATA-020 | Language and sound preferences persist across reloads and are not undoable actions. | D§10, D§13 | should | auto |
+| REQ-DATA-021 | Big screen window never writes to storage. | D§11 | must | auto |
+| REQ-DATA-022 | Autosave is not blocked by an unrelated failing draft or prefs write. | Task §4 | should | auto |
+
+## Accessibility (REQ-A11Y)
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-A11Y-001 | The whole organizer flow is usable by keyboard; all controls are real buttons/inputs with visible focus. | Spec: Visual › Layouts; D§12 | must | auto |
+| REQ-A11Y-002 | Heat result entry works keyboard-only (digits 1–9, Backspace, Tab to save). | D§12 | must | auto |
+| REQ-A11Y-003 | Modals move focus in, trap Tab and close on Esc; focus returns afterwards. | D§12 | must | auto |
+| REQ-A11Y-004 | `prefers-reduced-motion`: CSS animations collapse, confetti is skipped, roulette shows the result immediately. | Spec: Visual › Motion; D§12 | must | auto |
+| REQ-A11Y-005 | WCAG AA contrast for text and controls. | Spec: Visual › Layouts; D§12 | must | manual |
+| REQ-A11Y-006 | Skip link, landmarks, labelled form fields and live toasts; the tiebreak tooltip works on keyboard focus. | D§12 | should | auto |
+| REQ-A11Y-007 | Big screen type is legible from 5 m (large type). | Spec: Screens 7 | should | manual |
+
+## Internationalisation (REQ-I18N)
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-I18N-001 | All UI strings live in `src/i18n.ts`; default language is English. | Spec: Tech; D§13 | must | auto |
+| REQ-I18N-002 | German is a complete second language: every key exists in both dictionaries with the same placeholders. | Spec: Tech | must | auto |
+| REQ-I18N-003 | Switching language mid-event re-renders everything (also the big screen) without changing tournament data. | Spec: Tech; D§13 | must | auto |
+| REQ-I18N-004 | The chosen language is remembered and set as `<html lang>`. | D§13 | should | auto |
+| REQ-I18N-005 | CSV headers and status words follow the UI language. | D§10 | should | auto |
+
+## Build (REQ-BLD)
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-BLD-001 | `npm run build` produces one self-contained `dist/index.html` (no external files) that works from `file://` and via http. | Spec: Tech; D§1 | must | auto |
+| REQ-BLD-002 | The app works offline: no network request leaves the page while running a heat. | Spec: Tech; Context | must | auto |
+| REQ-BLD-003 | TypeScript strict; engine in `src/engine/` has no React imports. | Spec: Tech | must | auto |
+
+## Open discrepancies
+
+Where the spec and the implementation disagree, or the spec is silent/ambiguous. Nothing here was changed
+silently.
+
+| # | Topic | Spec says | App does | Status |
+|---|---|---|---|---|
+| D-1 | Heat of fewer than 3 after rebalancing | "Never create a heat with fewer than 3 players: if that would happen, rebalance, and if it's impossible (n < 3), block it." | 5 players at max 4 cannot be rebalanced (4+1, 3+2); the app gives one player a bye so four race (D§3). | **Flagged.** The spec does not say what to do for 5@4; the bye is the only rule-compatible option. Kept. |
+| D-2 | Withdrawal from a small unplayed heat | "Never create a heat with fewer than 3 players." Withdrawal: "excluded from future rounds". | Withdrawing from a 3-player unplayed heat leaves a 2-player heat (known limitation, D§5); the organizer can move someone in. | **Flagged**, spec silent about mid-round withdrawals. |
+| D-3 | Late registration slot | "If the current round still has an unplayed heat with a free slot, offer to add them there." | Same. A free slot means below the max size, even if the heat is already "Now racing". | Consistent. Noted for organizers. |
