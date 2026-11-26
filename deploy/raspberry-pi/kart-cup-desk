@@ -11,4 +11,5 @@ if [ -z "$BROWSER" ]; then
   echo "Chromium is not installed (sudo apt install chromium)." >&2
   exit 1
 fi
-exec "$BROWSER" --kiosk --noerrdialogs --disable-session-crashed-bubble --disable-infobars --no-first-run --password-store=basic "$URL"
+exec "$BROWSER" --kiosk --noerrdialogs --disable-session-crashed-bubble --disable-infobars --no-first-run --password-store=basic \
+  --disable-features=Translate,MediaRouter --disable-component-update --disk-cache-size=33554432 "$URL"

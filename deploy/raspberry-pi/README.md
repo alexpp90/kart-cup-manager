@@ -46,7 +46,18 @@ image directly. Then copy the **`kart-cup-server`** folder onto the card's **boo
    open it again with `kart-cup-desk`.
 
 Options: `--no-hotspot` uses the party router's network instead of the Pi's own Wi-Fi (then
-use `http://kartcup.local`); `--no-desk` skips the station.
+use `http://kartcup.local`); `--no-desk` skips the station; `--wifi-at-boot` switches to the
+Kart Cup Wi-Fi only at the next boot (when you install over SSH on the home Wi-Fi);
+`--no-optimize` leaves the system services alone.
+
+The installer also tunes the Pi 3 for the night: Bluetooth, NFS, PackageKit and the automatic
+apt runs are switched off, logs are capped at 50 MB, unused desktop helpers (camera, phone,
+online-account monitors) are masked, and with the station the desktop logs in by itself and
+the screen never blanks.
+
+**Power supply:** use a proper 5.1 V / 2.5 A supply (e.g. the official one). With a weak supply
+or a thin cable the Pi slows down and the Wi-Fi can drop; `vcgencmd get_throttled` shows
+`0x0` when all is well.
 
 ## 3. Test (5 minutes, do it before the party)
 
@@ -70,7 +81,7 @@ use `http://kartcup.local`); `--no-desk` skips the station.
 | Problem | Check |
 |---|---|
 | The phone joins the Wi-Fi but no page opens | Open **http://kartcup.lan** in the phone's browser, or scan the right (small) QR code. |
-| "Kart Cup" Wi-Fi doesn't appear | `nmcli connection up kartcup-ap` on the Pi; `journalctl -u NetworkManager -n 50` |
+| "Kart Cup" Wi-Fi doesn't appear | `nmcli connection up kartcup-ap` on the Pi; `journalctl -u NetworkManager -n 50`. On a Pi 3 the hotspot needs PMF off (the installer does that). |
 | The laptop says "Server not reachable" | Laptop on the Kart Cup Wi-Fi? `systemctl status kart-cup` on the Pi. |
 | Guests have no internet on the Kart Cup Wi-Fi | Only with a router cable on the Pi. Without, it's sign-up only (phones may switch back to mobile data). |
 | The station doesn't open after login | Run `kart-cup-desk` in a terminal; install Chromium if missing: `sudo apt install chromium` |

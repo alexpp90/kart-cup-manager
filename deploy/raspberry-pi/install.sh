@@ -4,6 +4,9 @@
 #   sudo bash install.sh                 own "Kart Cup" Wi-Fi + server + sign-up station
 #   sudo bash install.sh --no-hotspot    use the party router's network instead
 #   sudo bash install.sh --no-desk       no station on the Pi's screen
+#   sudo bash install.sh --wifi-at-boot  set up the Kart Cup Wi-Fi but switch to it only at the next boot
+#                                        (keeps an SSH session over the home Wi-Fi alive)
+#   sudo bash install.sh --no-optimize   leave the system services as they are
 # What it does:
 #   * installs Node.js if missing, copies index.html and server.mjs to /opt/kart-cup,
 #   * runs the server at every boot on port 80, reached by name: http://kartcup.lan
@@ -17,10 +20,14 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESK=1
 HOTSPOT=1
+WIFI_NOW=1
+OPTIMIZE=1
 for arg in "$@"; do
   case "$arg" in
     --no-desk) DESK=0 ;;
     --no-hotspot) HOTSPOT=0 ;;
+    --wifi-at-boot) WIFI_NOW=0 ;;
+    --no-optimize) OPTIMIZE=0 ;;
     *) echo "Unknown option $arg" >&2; exit 1 ;;
   esac
 done
@@ -95,6 +102,28 @@ if [ "$DESK" = "1" ]; then
   install -m 644 -o "$USER_NAME" -g "$USER_NAME" "$HERE/kart-cup-desk.desktop" "$USER_HOME/.config/autostart/kart-cup-desk.desktop"
 fi
 
+if [ "$OPTIMIZE" = "1" ]; then
+  echo "== Optimize for the party (Pi 3, 1 GB)"
+  # Not needed on a party server: Bluetooth, NFS, PackageKit, automatic apt runs during the night.
+  for unit in bluetooth.service hciuart.service rpcbind.service rpcbind.socket nfs-blkmap.service packagekit.service apt-daily.timer apt-daily-upgrade.timer; do
+    systemctl disable --now "$unit" >/dev/null 2>&1 || true
+  done
+  systemctl mask packagekit.service >/dev/null 2>&1 || true
+  # Keep logs small on the SD card.
+  install -d /etc/systemd/journald.conf.d
+  printf '[Journal]\nSystemMaxUse=50M\n' > /etc/systemd/journald.conf.d/kart-cup.conf
+  systemctl restart systemd-journald
+  # Desktop session: no camera/phone/online-account file monitors, no Bluetooth media proxy.
+  for unit in gvfs-afc-volume-monitor gvfs-goa-volume-monitor gvfs-gphoto2-volume-monitor gvfs-mtp-volume-monitor mpris-proxy; do
+    systemctl --global mask "$unit.service" >/dev/null 2>&1 || true
+  done
+  if [ "$DESK" = "1" ] && command -v raspi-config >/dev/null 2>&1; then
+    # The station comes up by itself: log in to the desktop automatically, never blank the screen.
+    raspi-config nonint do_boot_behaviour B4 || true
+    raspi-config nonint do_blanking 1 || true
+  fi
+fi
+
 if [ "$HOTSPOT" = "1" ]; then
   echo "== Wi-Fi \"$SSID\""
   command -v nmcli >/dev/null 2>&1 || fail "NetworkManager (nmcli) is needed for the Wi-Fi. Use --no-hotspot to skip it."
@@ -107,10 +136,17 @@ if [ "$HOTSPOT" = "1" ]; then
     connection.autoconnect-priority 100 ssid "$SSID" \
     802-11-wireless.mode ap 802-11-wireless.band bg 802-11-wireless.channel 6 \
     ipv4.method shared ipv4.addresses "$AP_IP/24" ipv6.method disabled \
-    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASS" wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp >/dev/null
-  echo "Switching $WIFI_DEV to the Kart Cup Wi-Fi now. If you are connected to this Pi over Wi-Fi (SSH), that connection ends here;"
-  echo "the Pi's screen or a network cable keep working."
-  nmcli connection up kartcup-ap >/dev/null || fail "The Wi-Fi did not start. See: journalctl -u NetworkManager -n 50"
+    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASS" wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp \
+    wifi-sec.pmf disable 802-11-wireless.powersave 2 >/dev/null
+  # PMF off: the Pi 3's Wi-Fi chip (brcmfmac) cannot run an access point with
+  # protected management frames (WPA-PSK-SHA256); with them the hotspot never starts.
+  if [ "$WIFI_NOW" = "1" ]; then
+    echo "Switching $WIFI_DEV to the Kart Cup Wi-Fi now. If you are connected to this Pi over Wi-Fi (SSH), that connection ends here;"
+    echo "the Pi's screen or a network cable keep working."
+    nmcli connection up kartcup-ap >/dev/null || fail "The Wi-Fi did not start. See: journalctl -u NetworkManager -n 50"
+  else
+    echo "The Kart Cup Wi-Fi starts at the next boot (it has priority over other Wi-Fi networks)."
+  fi
 fi
 
 sleep 2
