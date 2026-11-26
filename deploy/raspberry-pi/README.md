@@ -72,7 +72,8 @@ or a thin cable the Pi slows down and the Wi-Fi can drop; `vcgencmd get_throttle
    create a test tournament, *Home → Start phone sign-up*, then **Show QR code**.
 2. (The QR codes are also on the TV window and in the phone card on Home.)
 3. Phone: scan the **left** QR code with the camera → "Join Kart Cup?" → join. The sign-up page
-   opens by itself (iPhone: a sheet; Android: tap the "Sign in to network" message). Sign up "Test".
+   opens by itself (iPhone: a sheet; Android: tap the **"Sign in to Wi-Fi network"** notification).
+   Sign up "Test".
 4. Within two seconds "Test" appears on the laptop. On the Pi's screen the station shows the same QR codes.
 
 ## On the party day
@@ -86,7 +87,7 @@ or a thin cable the Pi slows down and the Wi-Fi can drop; `vcgencmd get_throttle
 
 | Problem | Check |
 |---|---|
-| The phone joins the Wi-Fi but no page opens | Open **http://kartcup.lan** in the phone's browser, or scan the right (small) QR code. |
+| The phone joins the Wi-Fi but no page opens | Android: pull down the notifications and tap **"Sign in to Wi-Fi network"**. Opening `kartcup.lan` in the browser only works when mobile data is off (or the Pi has a router cable): otherwise the phone sends the browser over mobile data. |
 | "Kart Cup" Wi-Fi doesn't appear | `systemctl status kart-cup-hostapd` and `journalctl -u kart-cup-hostapd -n 50` on the Pi |
 | The laptop says "Server not reachable" | Laptop on the Kart Cup Wi-Fi? `systemctl status kart-cup` on the Pi. |
 | Guests have no internet on the Kart Cup Wi-Fi | Only with a router cable on the Pi. Without, it's sign-up only (phones may switch back to mobile data). |
