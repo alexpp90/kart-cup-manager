@@ -59,9 +59,11 @@ export interface Player {
   id: string;
   name: string;
   tag: string;
-  avatar: string; // id from AVATARS
-  color: string; // hex
-  favorite: string;
+  /** Version 1 only: an avatar id. Kept in the data, no longer shown. */
+  avatar?: string;
+  color: string; // hex, one of COLORS
+  /** Version 1 only: favourite character. Kept in the data, no longer shown. */
+  favorite?: string;
   status: PlayerStatus;
   createdAt: number;
   /** Index of the first qualifying round the player was eligible for. */
@@ -85,6 +87,12 @@ export interface Heat {
   savedAt?: number;
   /** When the result was first saved (edits don't move it); used to measure heat times. */
   finishedAt?: number;
+  /**
+   * Controller number (1..8) per player. Missing = the order of playerIds.
+   * Written once the line-up changes after the draw, so nobody's number moves
+   * when someone joins late, is moved or withdraws.
+   */
+  seats?: Record<string, number>;
 }
 
 export interface Round {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Coin, Flag, ItemBox, Star } from '../components/Icons';
-import { PlayerForm, randomDraft, type PlayerDraft } from '../components/PlayerForm';
+import { newDraft, PlayerForm, type PlayerDraft } from '../components/PlayerForm';
 import { finalsReachForNewPlayer, isNameTaken, registrationOpen } from '../engine/tournament';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
@@ -10,9 +10,9 @@ import { useApp, useT } from '../store/store';
 export function Kiosk() {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const [draft, setDraft] = useState<PlayerDraft>(randomDraft);
+  const [draft, setDraft] = useState<PlayerDraft>(() => newDraft(tour.players));
   const [error, setError] = useState('');
-  const [welcome, setWelcome] = useState<(PlayerDraft & { noFinals?: { needed: number; possible: number } }) | null>(null);
+  const [welcome, setWelcome] = useState<{ id: string; name: string; color: string; noFinals?: { needed: number; possible: number } } | null>(null);
   const closed = !registrationOpen(tour);
   const count = tour.players.filter((p) => p.status !== 'withdrawn').length;
 
@@ -38,8 +38,9 @@ export function Kiosk() {
     sound.fanfare();
     const reach = finalsReachForNewPlayer(useApp.getState().t!);
     const name = r.t.players.find((p) => p.id === r.playerId)?.name ?? draft.name;
-    setWelcome({ ...draft, name, noFinals: reach.ok ? undefined : reach });
-    setDraft(randomDraft());
+    const after = useApp.getState().t!;
+    setWelcome({ id: r.playerId!, name, color: after.players.find((p) => p.id === r.playerId)?.color ?? draft.color, noFinals: reach.ok ? undefined : reach });
+    setDraft(newDraft(after.players));
   };
 
   return (
@@ -66,10 +67,9 @@ export function Kiosk() {
           <aside className="kiosk-side">
             <div className="license" aria-label={t('kiosk.preview')}>
               <div className="license-top">{t('kiosk.preview')}</div>
-              <Avatar avatar={draft.avatar} color={draft.color} size={140} className="license-avatar" />
+              <Avatar name={draft.name.trim() || '?'} color={draft.color} size={140} className="license-avatar" />
               <div className="license-name">{draft.name.trim() || t('kiosk.namePlaceholder')}</div>
               {draft.tag && <div className="license-tag">{draft.tag}</div>}
-              {draft.favorite && <div className="license-fav">♥ {draft.favorite}</div>}
             </div>
             <button type="submit" className="btn btn-red btn-xl btn-block kiosk-submit" data-testid="kiosk-submit">
               {t('kiosk.submit')} 🏁
@@ -84,7 +84,7 @@ export function Kiosk() {
       {welcome && (
         <div className="kiosk-welcome" role="status" onClick={() => setWelcome(null)}>
           <div className="kiosk-welcome-card">
-            <Avatar avatar={welcome.avatar} color={welcome.color} size={160} className="pop-in" />
+            <Avatar player={welcome} size={160} className="pop-in" marks={false} />
             <p>{t('kiosk.welcome')}</p>
             <strong className="display">{welcome.name}!</strong>
             <small>{t('kiosk.welcomeBody')}</small>

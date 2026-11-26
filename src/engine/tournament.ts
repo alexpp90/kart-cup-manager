@@ -1,6 +1,8 @@
 // Pure state transitions on a Tournament. Every function returns a new object
 // and never mutates its input, so the store can snapshot freely for undo.
+import { COLORS } from '../data/colors';
 import { CUPS } from '../data/cups';
+import { pickColor } from './color';
 import { cupPool, pickRandomCup, pickRandomTracks, trackPool, usedFromHeats } from './cups';
 import { eliminatedCount, heatCountOf, lastChanceWinners, presetStages, snakeSeed, splitStageOutcome, validateStages, finalStandings, type FinalRow, type StageError } from './finals';
 import { MIN_HEAT_SIZE, sizesAreValid, splitHeatSizes } from './heats';
@@ -56,6 +58,52 @@ export const roundComplete = (r: Round) => r.heats.every(isPlayed) && (!r.lastCh
 export const roundHeats = (r: Round): Heat[] => (r.lastChance ? [...r.heats, r.lastChance] : r.heats);
 export const currentRound = (t: Tournament): Round | null => t.rounds[t.rounds.length - 1] ?? null;
 export const playerById = (t: Tournament, id: string) => t.players.find((p) => p.id === id);
+
+// ---------------------------------------------------------------- controllers
+
+/** Controller number (1..8) of every player in a heat. */
+export function seatsOf(h: Heat): Map<string, number> {
+  const out = new Map<string, number>();
+  const taken = new Set<number>();
+  for (const id of h.playerIds) {
+    const s = h.seats?.[id];
+    if (s && !taken.has(s)) {
+      out.set(id, s);
+      taken.add(s);
+    }
+  }
+  // Without stored seats (or for anybody missing one) the list order counts, filling free numbers.
+  let next = 1;
+  for (const id of h.playerIds) {
+    if (out.has(id)) continue;
+    while (taken.has(next)) next++;
+    out.set(id, next);
+    taken.add(next);
+  }
+  return out;
+}
+
+/** Players of a heat in controller order. */
+export function bySeat(h: Heat): string[] {
+  const seats = seatsOf(h);
+  return h.playerIds.slice().sort((a, b) => seats.get(a)! - seats.get(b)!);
+}
+
+/** Add a player with the lowest free controller number; everybody else keeps theirs. */
+export function seatAdd(h: Heat, id: string): Heat {
+  const seats = Object.fromEntries(seatsOf(h));
+  const taken = new Set(Object.values(seats));
+  let n = 1;
+  while (taken.has(n)) n++;
+  return { ...h, playerIds: [...h.playerIds, id], seats: { ...seats, [id]: n } };
+}
+
+/** Remove players; the others keep their controller numbers. */
+export function seatRemove(h: Heat, ids: string[]): Heat {
+  const seats = Object.fromEntries(seatsOf(h));
+  for (const id of ids) delete seats[id];
+  return { ...h, playerIds: h.playerIds.filter((p) => !ids.includes(p)), seats };
+}
 
 export function finalsHeats(t: Tournament): Heat[] {
   if (!t.finals) return [];
@@ -170,9 +218,8 @@ export function isNameTaken(t: Tournament, name: string, exceptId?: string): boo
 export interface NewPlayer {
   name: string;
   tag?: string;
-  avatar: string;
-  color: string;
-  favorite?: string;
+  /** Missing: the least-used badge colour. */
+  color?: string;
   status?: PlayerStatus;
 }
 
@@ -186,9 +233,7 @@ export function addPlayer(t: Tournament, input: NewPlayer, id: string, now: numb
     id,
     name,
     tag: (input.tag ?? '').trim(),
-    avatar: input.avatar,
-    color: input.color,
-    favorite: (input.favorite ?? '').trim(),
+    color: input.color && COLORS.some((c) => c.toLowerCase() === input.color!.toLowerCase()) ? input.color : pickColor(t.players),
     status: input.status ?? 'registered',
     createdAt: now,
     // Late joiners start with the next generated round.
@@ -211,7 +256,7 @@ export function roundCandidates(t: Tournament): Player[] {
  * They are removed from heats that have not been played yet.
  */
 export function withdrawPlayer(t: Tournament, id: string, newId: IdGen = () => randomId()): Tournament {
-  const strip = (h: Heat): Heat => (isPlayed(h) ? h : { ...h, playerIds: h.playerIds.filter((p) => p !== id) });
+  const strip = (h: Heat): Heat => (isPlayed(h) || !h.playerIds.includes(id) ? h : seatRemove(h, [id]));
   return syncKnockout(
     {
       ...t,
@@ -285,7 +330,7 @@ export function addPlayerToHeat(t: Tournament, playerId: string, heatId: string)
     ...t,
     players: t.players.map((p) => (p.id === playerId ? { ...p, status: 'active', joinedRound: r.index } : p)),
     rounds: t.rounds.map((round) =>
-      round.id !== r.id ? round : { ...round, heats: round.heats.map((h) => (h.id === heatId ? { ...h, playerIds: [...h.playerIds, playerId] } : h)) },
+      round.id !== r.id ? round : { ...round, heats: round.heats.map((h) => (h.id === heatId ? seatAdd(h, playerId) : h)) },
     ),
   };
 }
@@ -602,7 +647,10 @@ export function saveHeatResult(t: Tournament, heatId: string, result: HeatResult
  */
 export function clearHeatResult(t: Tournament, heatId: string, newId: IdGen): Tournament {
   const withdrawn = new Set(t.players.filter((p) => p.status === 'withdrawn').map((p) => p.id));
-  const next = mapHeat(t, heatId, (h) => ({ ...h, playerIds: h.playerIds.filter((id) => !withdrawn.has(id)), result: undefined, savedAt: undefined, finishedAt: undefined }));
+  const next = mapHeat(t, heatId, (h) => {
+    const gone = h.playerIds.filter((id) => withdrawn.has(id));
+    return { ...(gone.length ? seatRemove(h, gone) : h), result: undefined, savedAt: undefined, finishedAt: undefined };
+  });
   return syncKnockout(syncFinals(next, newId), newId);
 }
 
@@ -663,8 +711,8 @@ export function movePlayer(t: Tournament, playerId: string, toHeatId: string): T
         : {
             ...r,
             heats: r.heats.map((h) => {
-              if (h.id === toHeatId) return { ...h, playerIds: [...h.playerIds, playerId] };
-              if (h.playerIds.includes(playerId)) return { ...h, playerIds: h.playerIds.filter((p) => p !== playerId) };
+              if (h.id === toHeatId) return seatAdd(h, playerId);
+              if (h.playerIds.includes(playerId)) return seatRemove(h, [playerId]);
               return h;
             }),
           },

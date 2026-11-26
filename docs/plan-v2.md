@@ -203,6 +203,8 @@ if the two differ, the app makes things more confusing, not less. So:
   clover for a lucky loser): they hang on the badge and come from the state.
 - **Old backups:** the avatar and favourite fields are ignored (kept in the file, not shown); the
   old colour stays the badge colour.
+- **Controller numbers** (your request, 2026-11-26): every heat shows which player takes which
+  controller 1–8, and the numbers stay put when someone joins late, moves or withdraws. Built in phase 2.
 
 ## 4. Hosted sessions and sync
 

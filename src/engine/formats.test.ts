@@ -38,7 +38,7 @@ function run(t: Tournament, cmd: Command, now = 0): Tournament {
 
 function setup(n: number, patch: Partial<Settings> = {}): Tournament {
   let t = createTournament({ ...defaultSettings(), ...patch }, 'T', 0);
-  t = run(t, { type: 'addPlayers', players: Array.from({ length: n }, (_, i) => ({ name: `P${i + 1}`, avatar: 'fox', color: '#000', status: 'checked-in' })) });
+  t = run(t, { type: 'addPlayers', players: Array.from({ length: n }, (_, i) => ({ name: `P${i + 1}`, color: '#000', status: 'checked-in' })) });
   return t;
 }
 
@@ -160,7 +160,7 @@ describe('[REQ-FMT-008] knockout rounds in the tournament', () => {
     t = run(t, { type: 'generateRound', seed: 1 });
     expect(t.rounds[0].heats.map((h) => h.playerIds.length)).toEqual([7, 7]);
     expect(registrationOpen(t)).toBe(true);
-    const add = applyCommand(t, { type: 'addPlayer', player: { name: 'Late', avatar: 'fox', color: '#000', status: 'checked-in' } }, ctx());
+    const add = applyCommand(t, { type: 'addPlayer', player: { name: 'Late', color: '#000', status: 'checked-in' } }, ctx());
     if (!add.ok) throw new Error();
     t = run(add.t, { type: 'lateJoin', playerId: add.playerId!, heatId: lateJoinSlots(add.t)[0].id });
     expect(t.rounds[0].heats[0].playerIds).toHaveLength(8);
@@ -214,7 +214,7 @@ describe('[REQ-FMT-003] league', () => {
     // Totals say level, but the place order a > b is part of the result: countback separates them.
     expect(leagueTable(t)[0].playerId).toBe(a);
     let u = createTournament({ ...defaultSettings(), format: 'league', heatSize: 4, leagueCups: 1 }, 'U', 0);
-    u = run(u, { type: 'addPlayers', players: ['A', 'B'].map((name) => ({ name, avatar: 'fox', color: '#000', status: 'checked-in' as const })) });
+    u = run(u, { type: 'addPlayers', players: ['A', 'B'].map((name) => ({ name, color: '#000', status: 'checked-in' as const })) });
     u = run(u, { type: 'generateRound', seed: 1 });
     u = run(u, { type: 'addRound' });
     const [x, y] = u.rounds[0].heats[0].playerIds;
@@ -304,7 +304,7 @@ describe('[REQ-ARCH-001] commands', () => {
     const t = setup(4, { format: 'knockout', heatSize: 4 });
     const frozen = JSON.stringify(t);
     expect(applyCommand(t, { type: 'saveResult', heatId: 'nope', result: { mode: 'ranking', order: [] } }, ctx()).ok).toBe(false);
-    expect(applyCommand(t, { type: 'addPlayer', player: { name: 'p1', avatar: 'fox', color: '#000' } }, ctx())).toEqual({ ok: false, error: 'name-taken' });
+    expect(applyCommand(t, { type: 'addPlayer', player: { name: 'p1', color: '#000' } }, ctx())).toEqual({ ok: false, error: 'name-taken' });
     expect(applyCommand(t, { type: 'withdraw', id: 'ghost' }, ctx()).ok).toBe(false);
     const g = applyCommand(t, { type: 'generateRound', seed: 1 }, ctx());
     if (!g.ok) throw new Error();

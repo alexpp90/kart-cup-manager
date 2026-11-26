@@ -98,7 +98,7 @@ Added with the v2 work (plan in `docs/plan-v2.md`, rules in DECISIONS §15). "S"
 | ID | Requirement | Source | Prio | Kind |
 |---|---|---|---|---|
 | REQ-UI-001 | Setup wizard collects name, date, max per heat, races, qualifying rounds, finals format, points table, entry mode, track mode, and shows a live time estimate. | Spec: Core flow 1 | must | auto |
-| REQ-UI-002 | Kiosk "Join the Race!": name (required, unique), tag, avatar + color, favourite; kiosk sign-ups are checked in automatically (setting). | Spec: Core flow 2; D§5 | must | auto |
+| REQ-UI-002 | Replaced by REQ-UI-027. (Was: Kiosk "Join the Race!": name (required, unique), tag, avatar + color, favourite; kiosk sign-ups are checked in automatically (setting).) | Spec: Core flow 2; D§5 | must | auto |
 | REQ-UI-003 | Quick add: paste names one per line; duplicates and blanks are skipped; option to check in right away. | Spec: Core flow 2; D§5 | must | auto |
 | REQ-UI-004 | Players screen: list, search, check-in toggle, edit, withdraw (with confirmation), reinstate. | Spec: Screens 2 | must | auto |
 | REQ-UI-005 | Home shows the phase indicator, the next heat in large letters ("Now racing"), "Up next", and quick actions. | Spec: Screens 1 | must | auto |
@@ -123,6 +123,9 @@ Added with the v2 work (plan in `docs/plan-v2.md`, rules in DECISIONS §15). "S"
 | REQ-UI-024 | No official logos, sprites, fonts or audio; app name contains neither "Mario" nor "Nintendo"; the single-file build makes no external network requests. | Spec: Visual › Legal | must | auto |
 | REQ-UI-025 | Sound is optional, off by default, synthesized; toggling it is remembered and does not touch tournament data. | Spec: Visual › Sound; D§12 | should | auto |
 | REQ-UI-026 | Time estimate and "time left" are shown on setup and Home. | D§13 | should | auto |
+| REQ-UI-027 | Kiosk "Join the Race!": name (required, unique), optional gamer tag and badge colour (the least-used colour is preselected); no character choice and no favourite character, because players pick their character on the console; kiosk sign-ups are checked in automatically (setting). | User 2026-11-26; D§16 | must | auto |
+| REQ-UI-028 | Players are shown everywhere as a badge in their colour with their initials (unique within the tournament where the names allow; earlier sign-ups keep theirs) and readable text colour; marks from the state: crown for the leader or champion, flames for 2+ heat wins in a row, clover for a lucky loser. | User 2026-11-26; D§16 | must | auto |
+| REQ-UI-029 | Every heat shows which player takes which controller (1–8) on the round preview, heat cards, Home, result entry and the big screen; result entry lists players in controller order and the number keys are the controller numbers. A late joiner gets the lowest free number; nobody's number changes when someone is moved, withdraws or joins. | User 2026-11-26; D§16 | must | auto |
 
 ## Data and persistence (REQ-DATA)
 
@@ -151,6 +154,7 @@ Added with the v2 work (plan in `docs/plan-v2.md`, rules in DECISIONS §15). "S"
 | REQ-DATA-021 | Big screen window never writes to storage. | D§11 | must | auto |
 | REQ-DATA-022 | Autosave is not blocked by an unrelated failing draft or prefs write. | Task §4 | should | auto |
 | REQ-DATA-023 | Schema version 2: stored data and backups of version 1 open as Classic with heat size, the points table that was in use and the old timing, and compute the same standings and finals; version 2 data with invalid format fields is repaired. | Brief v2 §1; D§15 | must | auto |
+| REQ-DATA-024 | Avatar and favourite fields of version 1 players stay in the data and in backups unchanged, but are not shown and not required. | D§16 | must | auto |
 
 ## Accessibility (REQ-A11Y)
 
@@ -193,4 +197,4 @@ silently.
 | D-2 | Withdrawal from a small unplayed heat | "Never create a heat with fewer than 3 players." Withdrawal: "excluded from future rounds". | Withdrawing from a 3-player unplayed heat leaves a 2-player heat (known limitation, D§5); the organizer can move someone in. | **Flagged**, spec silent about mid-round withdrawals. |
 | D-3 | Late registration slot | "If the current round still has an unplayed heat with a free slot, offer to add them there." | Same. A free slot means below the max size, even if the heat is already "Now racing". | Consistent. Noted for organizers. |
 | D-4 | Browser kill during heat entry (REQ-DATA-002) | Task §4: a tab close or browser kill loses no confirmed result. | Every save goes to localStorage synchronously, and the E2E test closes the tab without unload handling and reloads mid-heat. Chromium itself writes localStorage to disk with a short delay, so killing the whole browser process (or a power cut) right after a save can lose that last save. This is not covered by an automated test. | Known limitation, documented in DECISIONS §14. |
-| D-5 | Character choice at sign-up (REQ-UI-002) | Spec: sign-up with avatar and favourite. | Still shows the avatar picker and the favourite-character field. | **Decided 2026-11-26:** no character choice in the app (players pick one in the game). Removed in phase 2, then REQ-UI-002 is replaced. |
+| D-5 | Character choice at sign-up (REQ-UI-002) | Spec: sign-up with avatar and favourite. | Name, tag and a colour badge with initials. | **Resolved 2026-11-26** (phase 2): no character choice in the app (players pick one in the game). REQ-UI-002 replaced by REQ-UI-027/028. |

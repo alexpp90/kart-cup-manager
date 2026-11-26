@@ -26,13 +26,14 @@ import {
   type IdGen,
   type NewPlayer,
 } from './tournament';
+import { COLORS } from '../data/colors';
 import { validateResult } from './points';
 import type { CupPick, HeatResult, Player, Settings, StageConfig, SuddenDeath, Tournament } from './types';
 
 export type Command =
   | { type: 'addPlayer'; player: NewPlayer }
   | { type: 'addPlayers'; players: NewPlayer[] }
-  | { type: 'updatePlayer'; id: string; patch: Partial<Pick<Player, 'name' | 'tag' | 'avatar' | 'color' | 'favorite'>> }
+  | { type: 'updatePlayer'; id: string; patch: Partial<Pick<Player, 'name' | 'tag' | 'color'>> }
   | { type: 'setCheckedIn'; id: string; on: boolean }
   | { type: 'withdraw'; id: string }
   | { type: 'reinstate'; id: string }
@@ -88,6 +89,7 @@ export function applyCommand(t: Tournament, cmd: Command, ctx: CommandContext): 
     }
     case 'updatePlayer': {
       if (!player(cmd.id)) return fail('unknown-player');
+      if (cmd.patch.color !== undefined && !COLORS.includes(cmd.patch.color)) return fail('bad-color');
       if (cmd.patch.name !== undefined) {
         if (!normalizeName(cmd.patch.name)) return fail('name-required');
         if (isNameTaken(t, cmd.patch.name, cmd.id)) return fail('name-taken');

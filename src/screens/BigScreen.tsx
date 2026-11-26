@@ -5,7 +5,8 @@ import { CupInfo, Roulette } from '../components/Cup';
 import { Flag, ItemBox } from '../components/Icons';
 import { PodiumStage } from '../components/PodiumStage';
 import { Logo } from '../components/TopBar';
-import { finalResults, phaseOf, upcoming } from '../engine/tournament';
+import { bySeat, finalResults, phaseOf, seatsOf, upcoming } from '../engine/tournament';
+import { Seat } from '../components/Bits';
 import type { CupPick, Heat, Tournament } from '../engine/types';
 import { heatTitle, roundLabel } from '../lib/labels';
 import { useApp, useT } from '../store/store';
@@ -183,10 +184,11 @@ function RaceSlide({ tour, now, next, ready }: { tour: Tournament; now?: Heat; n
         <h2 className="ribbon ribbon-red big-ribbon">{t('home.nowRacing')}</h2>
         <div className="big-heat-title">{heatTitle(t, tour, now.id)}</div>
         <div className={`big-now-players n${now.playerIds.length}`}>
-          {now.playerIds.map((id, i) => {
+          {bySeat(now).map((id, i) => {
             const p = byId.get(id);
             return p ? (
               <div key={id} className="big-player" style={{ animationDelay: `${i * 90}ms` }}>
+                <Seat n={seatsOf(now).get(id)!} big />
                 <Avatar player={p} size={120} />
                 <span>{p.name}</span>
               </div>
@@ -212,11 +214,11 @@ function RaceSlide({ tour, now, next, ready }: { tour: Tournament; now?: Heat; n
               <>
                 <div className="big-queue-title">{heatTitle(t, tour, h.id)}</div>
                 <ul>
-                  {h.playerIds.map((id) => {
+                  {bySeat(h).map((id) => {
                     const p = byId.get(id);
                     return p ? (
                       <li key={id}>
-                        <Avatar player={p} size={44} /> {p.name}
+                        <Seat n={seatsOf(h).get(id)!} /> <Avatar player={p} size={44} /> {p.name}
                       </li>
                     ) : null;
                   })}

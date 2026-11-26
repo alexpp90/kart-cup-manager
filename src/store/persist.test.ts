@@ -39,7 +39,7 @@ const demo = (): Tournament => buildDemo(newId, 0);
 const small = (): Tournament => {
   let t = createTournament(defaultSettings(), 'T', 0);
   for (const name of ['Ann', 'Ben', 'Cat']) {
-    const r = addPlayer(t, { name, avatar: 'fox', color: '#000' }, name, 0);
+    const r = addPlayer(t, { name, color: '#000' }, name, 0);
     if (r.ok) t = r.t;
   }
   return t;
@@ -315,7 +315,7 @@ describe('two windows', () => {
     expect(w2.useApp.getState().t?.players).toHaveLength(3);
     // Window 1 adds a player; window 2 has not heard of it yet and edits.
     w1.useApp.getState().apply('add Dan', (t) => {
-      const r = addPlayer(t, { name: 'Dan', avatar: 'fox', color: '#000' }, 'Dan', 0);
+      const r = addPlayer(t, { name: 'Dan', color: '#000' }, 'Dan', 0);
       return r.ok ? r.t : t;
     });
     w2.useApp.getState().apply('rename', (t) => ({ ...t, settings: { ...t.settings, name: 'From window 2' } }));

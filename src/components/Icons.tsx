@@ -119,3 +119,35 @@ export function Clover({ size = 18, ...p }: P) {
     </svg>
   );
 }
+
+/** Crown: the current leader / champion. */
+export function Crown({ size = 18, ...p }: P) {
+  return (
+    <svg viewBox="0 0 32 24" {...base(size, p)}>
+      <path d="M3 20 2 6l8 6 6-10 6 10 8-6-1 14Z" fill="#FFC81E" stroke="#14213D" strokeWidth="2.2" strokeLinejoin="round" />
+      <circle cx="16" cy="15" r="2.2" fill="#E60012" stroke="#14213D" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/** Flame: two or more heat wins in a row. */
+export function Flame({ size = 18, ...p }: P) {
+  return (
+    <svg viewBox="0 0 24 30" {...base(size, p)}>
+      <path d="M12 2c1 5 7 8 7 15a7 7 0 0 1-14 0c0-4 2-6 3-8 0 3 1 4 2 5 0-5 1-9 2-12Z" fill="#FF7A00" stroke="#14213D" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M12 15c1 2 3 3 3 6a3 3 0 0 1-6 0c0-2 1-3 3-6Z" fill="#FFC81E" />
+    </svg>
+  );
+}
+
+/** A generic game controller (no real product shape). */
+export function IconPad({ size = 16, ...p }: P) {
+  return (
+    <svg viewBox="0 0 32 22" {...base(size, p)}>
+      <path d="M8 3h16c4 0 7 4 7 10 0 5-2 8-5 8-2 0-3-2-5-4H11c-2 2-3 4-5 4-3 0-5-3-5-8C1 7 4 3 8 3Z" fill="currentColor" />
+      <path d="M8 9v6M5 12h6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="22" cy="10" r="1.8" fill="#fff" />
+      <circle cx="25.5" cy="13.5" r="1.8" fill="#fff" />
+    </svg>
+  );
+}

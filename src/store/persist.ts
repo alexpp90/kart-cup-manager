@@ -107,9 +107,7 @@ export function migrateTournament(raw: unknown): MigrateResult {
     if (!isObj(p) || !isStr(p.id) || !p.id || !isStr(p.name) || !p.name.trim()) return { ok: false, error: 'invalid' };
     const w = `players[${i}].`;
     fix(p, 'tag', isStr, '', repairs, w);
-    fix(p, 'avatar', isStr, 'fox', repairs, w);
     fix(p, 'color', isStr, '#E60012', repairs, w);
-    fix(p, 'favorite', isStr, '', repairs, w);
     fix(p, 'status', (v) => v === 'registered' || v === 'checked-in' || v === 'active' || v === 'withdrawn', 'checked-in', repairs, w);
     fix(p, 'createdAt', isNum, 0, repairs, w);
     fix(p, 'joinedRound', isNum, 0, repairs, w);

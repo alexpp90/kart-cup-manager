@@ -27,7 +27,7 @@ function setup(n: number, patch: Partial<Settings> = {}): Tournament {
   const legacy: Partial<Settings> = { format: 'classic', entryMode: 'per-race', heatSize, points: (heatSize === 4 ? LEGACY_POINTS_4 : LEGACY_POINTS_8).slice(), minutesPerRace: 2.5, cupOverheadMinutes: 0, expectedPlayers: 30 };
   let t = createTournament({ ...defaultSettings(), ...legacy, ...patch }, 'T', 0);
   for (let i = 0; i < n; i++) {
-    const r = addPlayer(t, { name: `Player ${i + 1}`, avatar: 'fox', color: '#f00', status: 'checked-in' }, `p${i + 1}`, 0);
+    const r = addPlayer(t, { name: `Player ${i + 1}`, color: '#f00', status: 'checked-in' }, `p${i + 1}`, 0);
     if (!r.ok) throw new Error(r.error);
     t = r.t;
   }
@@ -39,7 +39,7 @@ function randomStep(t: Tournament, rng: Rng, step: number): Tournament {
   const roll = rng();
   const active = t.players.filter((p) => p.status !== 'withdrawn' && p.status !== 'registered');
   if (roll < 0.08) {
-    const r = addPlayer(t, { name: `Late ${step}`, avatar: 'cat', color: '#00f', status: 'checked-in' }, `late${step}`, 0);
+    const r = addPlayer(t, { name: `Late ${step}`, color: '#00f', status: 'checked-in' }, `late${step}`, 0);
     if (r.ok) {
       t = r.t;
       const slot = lateJoinSlots(t)[0];
@@ -207,7 +207,7 @@ describe('registration rules', () => {
     t = commitRound(t, p.round);
     for (const h of upcoming(t)) t = saveHeatResult(t, h.id, simulateResult(h, t.settings, skillFor, rng), 0, newId);
     expect(roundComplete(currentRound(t)!)).toBe(true);
-    const r = addPlayer(t, { name: 'Too Late', avatar: 'fox', color: '#000', status: 'checked-in' }, 'late', 0);
+    const r = addPlayer(t, { name: 'Too Late', color: '#000', status: 'checked-in' }, 'late', 0);
     if (!r.ok) throw new Error();
     t = r.t;
     expect(lateJoinSlots(t)).toEqual([]);
@@ -231,7 +231,7 @@ describe('registration rules', () => {
     expect(p1.joinedRound).toBe(1);
     expect(canDeletePlayer(t, 'p1')).toBe(false);
     expect(deletePlayer(t, 'p1')).toBe(t);
-    const r = addPlayer(t, { name: 'Fresh', avatar: 'fox', color: '#000' }, 'fresh', 0);
+    const r = addPlayer(t, { name: 'Fresh', color: '#000' }, 'fresh', 0);
     if (!r.ok) throw new Error();
     expect(canDeletePlayer(r.t, 'fresh')).toBe(true);
     expect(deletePlayer(r.t, 'fresh').players.map((x) => x.id)).not.toContain('fresh');
@@ -275,7 +275,7 @@ describe('purity', () => {
       expect(() => fn(frozen), label).not.toThrow();
       expect(JSON.stringify(frozen), label).toBe(before);
     };
-    check('addPlayer', (x) => addPlayer(x, { name: 'New', avatar: 'fox', color: '#000' }, 'n', 0));
+    check('addPlayer', (x) => addPlayer(x, { name: 'New', color: '#000' }, 'n', 0));
     check('previewRound', (x) => previewRound(x, 1, newId, 0));
     const p = previewRound(t, 1, newId, 0);
     if (!p.ok) throw new Error();

@@ -3,7 +3,7 @@ import { computeStandings, minHeatsForFinals, suddenDeathKey, tieAcrossCut, type
 import type { Player } from './types';
 
 const player = (id: string, status: Player['status'] = 'active'): Player => ({
-  id, name: id.toUpperCase(), tag: '', avatar: 'fox', color: '#000', favorite: '', status, createdAt: 0, joinedRound: 0,
+  id, name: id.toUpperCase(), tag: '', color: '#000', favorite: '', status, createdAt: 0, joinedRound: 0,
 });
 const heat = (id: string, ...entries: [string, number][]): ScoredHeat => ({
   heatId: id,

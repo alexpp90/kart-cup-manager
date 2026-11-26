@@ -20,7 +20,7 @@ function setup(n: number, patch: Partial<Settings> = {}): Tournament {
   const legacy: Partial<Settings> = { format: 'classic', entryMode: 'per-race', heatSize, points: (heatSize === 4 ? LEGACY_POINTS_4 : LEGACY_POINTS_8).slice(), minutesPerRace: 2.5, cupOverheadMinutes: 0, expectedPlayers: 30 };
   let t = createTournament({ ...defaultSettings(), ...legacy, ...patch }, 'T', 0);
   for (let i = 0; i < n; i++) {
-    const r = addPlayer(t, { name: `Player ${i + 1}`, avatar: 'fox', color: '#f00', status: 'checked-in' }, `p${i + 1}`, 0);
+    const r = addPlayer(t, { name: `Player ${i + 1}`, color: '#f00', status: 'checked-in' }, `p${i + 1}`, 0);
     if (!r.ok) throw new Error(r.error);
     t = r.t;
   }
@@ -44,14 +44,14 @@ describe('registration', () => {
   it('[REQ-ENG-024] requires unique names, case-insensitive', () => {
     const t = setup(1);
     expect(isNameTaken(t, '  player 1 ')).toBe(true);
-    const r = addPlayer(t, { name: 'PLAYER 1', avatar: 'fox', color: '#000' }, 'x', 0);
+    const r = addPlayer(t, { name: 'PLAYER 1', color: '#000' }, 'x', 0);
     expect(r).toEqual({ ok: false, error: 'name-taken' });
-    expect(addPlayer(t, { name: '   ', avatar: 'fox', color: '#000' }, 'x', 0)).toEqual({ ok: false, error: 'name-required' });
+    expect(addPlayer(t, { name: '   ', color: '#000' }, 'x', 0)).toEqual({ ok: false, error: 'name-required' });
   });
 
   it('[REQ-ENG-025] only checked-in / active players are put into heats; they become active', () => {
     let t = setup(8);
-    const r = addPlayer(t, { name: 'No Show', avatar: 'fox', color: '#000', status: 'registered' }, 'ns', 0);
+    const r = addPlayer(t, { name: 'No Show', color: '#000', status: 'registered' }, 'ns', 0);
     if (!r.ok) throw new Error();
     t = r.t;
     const p = previewRound(t, 1, newId, 0);
@@ -111,7 +111,7 @@ describe('late registration', () => {
   it('[REQ-ENG-026] a late player joins from the next generated round, or an unplayed heat with room', () => {
     let t = setup(30);
     t = playRound(t, 1);
-    const r = addPlayer(t, { name: 'Late Larry', avatar: 'fox', color: '#000', status: 'checked-in' }, 'late', 0);
+    const r = addPlayer(t, { name: 'Late Larry', color: '#000', status: 'checked-in' }, 'late', 0);
     if (!r.ok) throw new Error();
     t = r.t;
     expect(r.player.joinedRound).toBe(1);
@@ -124,7 +124,7 @@ describe('late registration', () => {
 
     // During round 2, a second late player can be dropped into an unplayed 7-heat.
     t = commitRound(t, p.round);
-    const r2 = addPlayer(t, { name: 'Later Lisa', avatar: 'fox', color: '#000', status: 'checked-in' }, 'later', 0);
+    const r2 = addPlayer(t, { name: 'Later Lisa', color: '#000', status: 'checked-in' }, 'later', 0);
     if (!r2.ok) throw new Error();
     t = r2.t;
     const slots = lateJoinSlots(t);
@@ -165,7 +165,7 @@ describe('full tournaments', () => {
   it('[REQ-ENG-017][REQ-ENG-035][REQ-ENG-038] 30 players, max 8: 3 rounds with a late join and a withdrawal → semis → grand final → podium', () => {
     let t = setup(30, { heatSize: 8 });
     t = playRound(t, 1);
-    const r = addPlayer(t, { name: 'Late', avatar: 'fox', color: '#000', status: 'checked-in' }, 'late', 0);
+    const r = addPlayer(t, { name: 'Late', color: '#000', status: 'checked-in' }, 'late', 0);
     if (!r.ok) throw new Error();
     t = withdrawPlayer(r.t, 'p3');
     t = playRound(t, 2);

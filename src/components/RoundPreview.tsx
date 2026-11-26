@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { luckyLosers, previewRound, roundOutcome } from '../engine/tournament';
+import { bySeat, luckyLosers, previewRound, roundOutcome, seatsOf } from '../engine/tournament';
+import { Seat } from './Bits';
 import { names, roundLabel } from '../lib/labels';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
@@ -71,6 +72,7 @@ export function RoundPreview({ onClose }: { onClose: () => void }) {
       }
     >
       <p className="muted">{format === 'classic' ? t('rounds.previewBody') : format === 'league' ? t('rounds.previewLeague') : tour.rounds.length ? t('rounds.previewSeeded', { prev: roundLabel(t, tour, tour.rounds.length - 1) }) : t('rounds.previewDraw')}</p>
+      <p className="muted">{t('seat.hint')}</p>
       <div className="preview-stats">
         <span className="chip">{t('common.heats', { n: preview.round.heats.length })}</span>
         <span className="chip">{t('common.players', { n: preview.round.heats.reduce((a, h) => a + h.playerIds.length, 0) })}</span>
@@ -93,10 +95,11 @@ export function RoundPreview({ onClose }: { onClose: () => void }) {
           <div key={h.id} className="preview-heat">
             <h3 className="ribbon ribbon-blue ribbon-sm">{preview.round.final ? t('stage.final') : format === 'league' ? t('heat.cup', { n }) : t('heat.label', { n: i + 1 })}</h3>
             <ul>
-              {h.playerIds.map((id) => {
+              {bySeat(h).map((id) => {
                 const p = byId.get(id)!;
                 return (
                   <li key={id}>
+                    <Seat n={seatsOf(h).get(id)!} />
                     <Avatar player={p} size={24} /> {p.name}
                     {lucky.has(id) && (
                       <span className="lucky-mark" title={t('ko.lucky')} aria-label={t('ko.lucky')} role="img">

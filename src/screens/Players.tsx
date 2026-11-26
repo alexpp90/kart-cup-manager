@@ -4,8 +4,7 @@ import { Card, StatusPill, Toggle } from '../components/Bits';
 import { Modal } from '../components/Dialogs';
 import { IconEdit, IconPlus, IconTablet } from '../components/Icons';
 import { LateJoiners } from '../components/LateJoiners';
-import { PlayerForm, randomDraft, type PlayerDraft } from '../components/PlayerForm';
-import { AVATARS, COLORS } from '../data/avatars';
+import { newDraft, PlayerForm, type PlayerDraft } from '../components/PlayerForm';
 import { allHeats, finalsReachForNewPlayer, isNameTaken, lateJoinSlots, normalizeName } from '../engine/tournament';
 import type { Player, PlayerStatus } from '../engine/types';
 import { heatTitle } from '../lib/labels';
@@ -92,7 +91,6 @@ export function Players() {
                 <div className="player-main">
                   <strong>{p.name}</strong>
                   {p.tag && <span className="tag">{p.tag}</span>}
-                  {p.favorite && <small className="muted"> ♥ {p.favorite}</small>}
                   {p.status === 'checked-in' && tour.rounds.length > 0 && <small className="muted"> · {t('players.joinsRound', { n: p.joinedRound + 1 })}</small>}
                 </div>
                 <StatusPill status={p.status} />
@@ -156,7 +154,7 @@ function EditPlayer({ player, onClose, onAdded }: { player: Player | null; onClo
   const t = useT();
   const tour = useApp((s) => s.t)!;
   const dispatch = useApp((s) => s.dispatch);
-  const [draft, setDraft] = useState<PlayerDraft>(() => (player ? { name: player.name, tag: player.tag, favorite: player.favorite, avatar: player.avatar, color: player.color } : randomDraft()));
+  const [draft, setDraft] = useState<PlayerDraft>(() => (player ? { name: player.name, tag: player.tag, color: player.color } : newDraft(tour.players)));
   const [checkIn, setCheckIn] = useState(true);
   const [error, setError] = useState('');
   const save = () => {
@@ -204,11 +202,8 @@ function QuickAdd({ onClose }: { onClose: () => void }) {
   const [checkIn, setCheckIn] = useState(false);
   const add = () => {
     const names = text.split(/\r?\n/).map(normalizeName).filter(Boolean);
-    const start = useApp.getState().t!.players.length;
-    const r = dispatch({
-      type: 'addPlayers',
-      players: names.map((name, k) => ({ name, avatar: AVATARS[(start + k) % AVATARS.length].id, color: COLORS[((start + k) * 5) % (COLORS.length - 1)], status: checkIn ? 'checked-in' : 'registered' })),
-    });
+    // Colours are picked by the engine: the least-used one for each new player.
+    const r = dispatch({ type: 'addPlayers', players: names.map((name) => ({ name, status: checkIn ? 'checked-in' : 'registered' })) });
     const added = r.ok ? (r.added ?? 0) : 0;
     const skipped = r.ok ? (r.skipped ?? []) : names;
     toast(t('players.quickAdded', { n: added }), 'success');

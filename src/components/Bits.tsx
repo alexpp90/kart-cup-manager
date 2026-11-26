@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { IconPad } from './Icons';
 import type { PlayerStatus } from '../engine/types';
 import { useT } from '../store/store';
 
@@ -81,5 +82,16 @@ export function ChoiceCards<V extends string | number>({ value, options, onChang
         </label>
       ))}
     </div>
+  );
+}
+
+/** The controller a player uses in a heat (1..8). */
+export function Seat({ n, big }: { n: number; big?: boolean }) {
+  const t = useT();
+  return (
+    <span className={`seat-chip ${big ? 'seat-chip-big' : ''}`} title={t('seat.label', { n })} aria-label={t('seat.label', { n })} data-testid="seat">
+      <IconPad size={big ? 22 : 14} />
+      <b>{n}</b>
+    </span>
   );
 }

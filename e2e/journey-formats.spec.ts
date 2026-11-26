@@ -56,7 +56,7 @@ test.describe('[journey] formats', () => {
     await page.click('button:has-text("EN")');
   });
 
-  test('[REQ-FMT-004][REQ-FMT-005][REQ-FMT-008][REQ-FMT-014] a knockout night: draw, top 4 go on, lucky losers fill the semis, final, podium', async () => {
+  test('[REQ-FMT-004][REQ-FMT-005][REQ-FMT-008][REQ-FMT-014][REQ-UI-029] a knockout night: draw, top 4 go on, lucky losers fill the semis, final, podium', async () => {
     await fresh();
     await setupTournament(page, url, { name: 'KO Night', format: 'knockout', max: 8, players: 20, entry: 'totals' });
     await quickAdd(page, url, NAMES.slice(0, 20));
@@ -64,9 +64,13 @@ test.describe('[journey] formats', () => {
     await page.click('[data-testid=generate-round]');
     await expect(page.locator('[data-testid=regenerate]')).toBeVisible();
     await page.click('[data-testid=regenerate]');
+    // Every player in the preview has a controller number 1..n per heat.
+    await expect(page.locator('.preview-heat').first().locator('[data-testid=seat]')).toHaveText(['1', '2', '3', '4', '5', '6', '7']);
     await page.click('[data-testid=save-round]');
     let t = await state(page);
     expect(sizes(t.rounds[0])).toEqual([7, 7, 6]);
+    await expect(page.locator('.now-player [data-testid=seat]')).toHaveText(['1', '2', '3', '4', '5', '6', '7']);
+    await expect(page.locator('.now-player .avatar[data-initials]')).toHaveCount(7);
     expect(t.rounds[0]).toMatchObject({ advance: 4, fill: 'best' });
     await expect(page.locator('[data-testid=time-line]')).toContainText('per heat');
     expect(await playQueue(page, url, perm)).toBe(3);
@@ -102,6 +106,17 @@ test.describe('[journey] formats', () => {
     await expect(page.locator('.podium-slot').first()).toBeVisible();
     await page.goto(url('join'));
     await expect(page.locator('.kiosk')).toContainText('Registration is closed');
+  });
+
+  test('[REQ-UI-028] badges show unique initials, the champion wears the crown, lucky losers the clover', async () => {
+    await page.goto(url('standings'));
+    await page.click('[role=tab]:has-text("Knockout")');
+    const initials = await page.locator('[data-testid=ko-table] .avatar').evaluateAll((els) => els.map((e) => e.getAttribute('data-initials')));
+    expect(initials).toHaveLength(20);
+    expect(new Set(initials).size).toBe(20);
+    await expect(page.locator('[data-testid=ko-table] tbody tr').first().locator('.mark-crown')).toHaveCount(1);
+    await expect(page.locator('[data-testid=ko-table] .mark-clover')).toHaveCount(3);
+    await shot(page, OUT, 'badges-marks');
   });
 
   test('[REQ-TIME-002][REQ-PLAN-004] Home and the big screen show the time per heat, heats left and the end time; Home compares with the setup plan', async () => {

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '../components/Avatar';
-import { Card, PosBadge } from '../components/Bits';
+import { Card, PosBadge, Seat } from '../components/Bits';
 import { HeatCup } from '../components/Cup';
 import { IconDown, IconUp } from '../components/Icons';
 import { TapOrder } from '../components/TapOrder';
 import { orderFromTotals, perRaceTotals, totalsTieGroups, validateResult, type ValidationError } from '../engine/points';
-import { heatInfo, tableFor } from '../engine/tournament';
+import { bySeat, heatInfo, seatsOf, tableFor } from '../engine/tournament';
 import type { EntryMode, HeatResult, Player } from '../engine/types';
 import { heatTitle, names } from '../lib/labels';
 import { go } from '../lib/router';
@@ -80,7 +80,10 @@ export function ResultEntry({ heatId }: { heatId: string }) {
       </Card>
     );
   }
-  const players = heat.playerIds.map((id) => tour.players.find((p) => p.id === id)!).filter(Boolean);
+  // In controller order, so the number keys are the controller numbers.
+  const seats = seatsOf(heat);
+  const players = bySeat(heat).map((id) => tour.players.find((p) => p.id === id)!).filter(Boolean);
+  const keys = players.map((p) => seats.get(p.id)!);
   const table = tableFor(tour);
   const back = () => go(info.kind === 'qual' || info.kind === 'rlc' ? '' : 'finals');
 
@@ -145,11 +148,11 @@ export function ResultEntry({ heatId }: { heatId: string }) {
         </div>
       </div>
       {draft.mode === 'per-race' ? (
-        <PerRace players={players} draft={draft} setDraft={setDraft} race={race} setRace={setRace} races={races} table={table} />
+        <PerRace keys={keys} players={players} draft={draft} setDraft={setDraft} race={race} setRace={setRace} races={races} table={table} />
       ) : draft.mode === 'ranking' ? (
-        <Ranking players={players} draft={draft} setDraft={setDraft} races={races} table={table} />
+        <Ranking keys={keys} players={players} draft={draft} setDraft={setDraft} races={races} table={table} />
       ) : (
-        <Totals players={players} draft={draft} setDraft={setDraft} />
+        <Totals keys={keys} players={players} draft={draft} setDraft={setDraft} />
       )}
       {errors.length > 0 && (
         <div className="notice notice-error" role="alert">
@@ -173,7 +176,7 @@ export function ResultEntry({ heatId }: { heatId: string }) {
   );
 }
 
-function PerRace({ players, draft, setDraft, race, setRace, races, table }: { players: Player[]; draft: Draft; setDraft: (d: Draft) => void; race: number; setRace: (n: number) => void; races: number; table: number[] }) {
+function PerRace({ keys, players, draft, setDraft, race, setRace, races, table }: { keys: number[]; players: Player[]; draft: Draft; setDraft: (d: Draft) => void; race: number; setRace: (n: number) => void; races: number; table: number[] }) {
   const t = useT();
   const ids = players.map((p) => p.id);
   const current = draft.races[race] ?? [];
@@ -205,6 +208,7 @@ function PerRace({ players, draft, setDraft, race, setRace, races, table }: { pl
             {t('result.tapHint')} <span className="kbd-hint">{t('result.keyHint', { n: Math.min(9, players.length) })}</span>
           </p>
           <TapOrder
+            keys={keys}
             players={players}
             order={current}
             onChange={setRaceOrder}
@@ -271,7 +275,7 @@ function PerRace({ players, draft, setDraft, race, setRace, races, table }: { pl
   );
 }
 
-function Totals({ players, draft, setDraft }: { players: Player[]; draft: Draft; setDraft: (d: Draft) => void }) {
+function Totals({ keys, players, draft, setDraft }: { keys: number[]; players: Player[]; draft: Draft; setDraft: (d: Draft) => void }) {
   const t = useT();
   const ids = players.map((p) => p.id);
   const nums = Object.fromEntries(ids.map((id) => [id, draft.points[id] === undefined || draft.points[id] === '' ? Number.NaN : Number(draft.points[id])]));
@@ -291,6 +295,7 @@ function Totals({ players, draft, setDraft }: { players: Player[]; draft: Draft;
         <div className="totals-list">
           {players.map((p, i) => (
             <label key={p.id} className="totals-row">
+              <Seat n={keys[i]} />
               <Avatar player={p} size={40} />
               <span className="totals-name">{p.name}</span>
               <input
@@ -340,7 +345,7 @@ function Totals({ players, draft, setDraft }: { players: Player[]; draft: Draft;
 }
 
 /** Final cup order only: tap the players from 1st to last; points = table[place] × races. */
-function Ranking({ players, draft, setDraft, races, table }: { players: Player[]; draft: Draft; setDraft: (d: Draft) => void; races: number; table: number[] }) {
+function Ranking({ keys, players, draft, setDraft, races, table }: { keys: number[]; players: Player[]; draft: Draft; setDraft: (d: Draft) => void; races: number; table: number[] }) {
   const t = useT();
   const byId = new Map(players.map((p) => [p.id, p]));
   return (
@@ -349,7 +354,7 @@ function Ranking({ players, draft, setDraft, races, table }: { players: Player[]
         <p className="muted">
           {t('result.rankingHint')} <span className="kbd-hint">{t('result.keyHint', { n: Math.min(9, players.length) })}</span>
         </p>
-        <TapOrder players={players} order={draft.order} onChange={(order) => setDraft({ ...draft, order })} />
+        <TapOrder keys={keys} players={players} order={draft.order} onChange={(order) => setDraft({ ...draft, order })} />
         <div className="btn-row">
           <button className="btn btn-white btn-sm" disabled={!draft.order.length} onClick={() => setDraft({ ...draft, order: draft.order.length === players.length ? draft.order.slice(0, -2) : draft.order.slice(0, -1) })}>
             {t('result.undoTap')}

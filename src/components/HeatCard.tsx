@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { canMovePlayer, scoreOf } from '../engine/tournament';
+import { bySeat, canMovePlayer, scoreOf, seatsOf } from '../engine/tournament';
 import type { Heat, Tournament } from '../engine/types';
 import { heatTitle } from '../lib/labels';
 import { heatStatus } from '../lib/queue';
 import { go } from '../lib/router';
 import { useApp, useT } from '../store/store';
 import { Avatar } from './Avatar';
-import { PosBadge } from './Bits';
+import { PosBadge, Seat } from './Bits';
 import { HeatCup } from './Cup';
 import { Clover, IconDown, IconEdit, IconMove, IconUp } from './Icons';
 
@@ -34,7 +34,8 @@ export function HeatCard({ tour, heat, siblings = [], controls = true, advance, 
   const pos = siblings.findIndex((h) => h.id === heat.id);
   const prev = siblings[pos - 1];
   const next = siblings[pos + 1];
-  const rows = scores ? scores.map((s) => ({ id: s.playerId, place: s.place, points: s.points })) : heat.playerIds.map((id) => ({ id, place: 0, points: 0 }));
+  const seats = seatsOf(heat);
+  const rows = scores ? scores.map((s) => ({ id: s.playerId, place: s.place, points: s.points })) : bySeat(heat).map((id) => ({ id, place: 0, points: 0 }));
 
   return (
     <article className={`heat-card heat-${status}`} style={{ animationDelay: `${index * 60}ms` }} data-testid="heat-card">
@@ -52,6 +53,7 @@ export function HeatCard({ tour, heat, siblings = [], controls = true, advance, 
           return (
             <li key={r.id} className={`heat-player ${adv ? 'advances' : ''} ${p.status === 'withdrawn' ? 'is-withdrawn' : ''}`}>
               {r.place > 0 ? <PosBadge pos={r.place} size="sm" /> : seed > 0 ? <span className="seed" title={t('finals.seed', { n: seed })}>{seed}</span> : null}
+              <Seat n={seats.get(r.id)!} />
               <Avatar player={p} size={30} />
               <span className="heat-player-name">
                 {p.name}

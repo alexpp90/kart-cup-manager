@@ -64,10 +64,15 @@ test.describe('[journey] 30 players, max 8', () => {
     expect(t.players.every((p: { status: string }) => p.status === 'checked-in')).toBe(true);
   });
 
-  test('[REQ-UI-002] kiosk sign-up with tag, avatar, colour and favourite is checked in automatically', async () => {
+  test('[REQ-UI-027] kiosk sign-up with name, tag and badge colour, no character choice, checked in automatically', async () => {
+    await page.goto(url('join'));
+    await expect(page.locator('.avatar-choice')).toHaveCount(0);
+    await expect(page.locator('.kiosk')).not.toContainText(/favourite|Who do you drive/i);
     await kioskRegister(page, url, 'Kiosk Kai');
     const kai = (await state(page)).players.find((p: { name: string }) => p.name === 'Kiosk Kai');
-    expect(kai).toMatchObject({ status: 'checked-in', tag: 'KI', favorite: 'The fast one' });
+    expect(kai).toMatchObject({ status: 'checked-in', tag: 'KI', color: '#2A6FD6' });
+    expect(kai).not.toHaveProperty('avatar');
+    expect(kai).not.toHaveProperty('favorite');
     await page.goto(url('join'));
     await page.fill('[data-testid=player-name]', 'kiosk kai');
     await page.click('[data-testid=kiosk-submit]');

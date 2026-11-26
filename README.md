@@ -9,7 +9,7 @@ A local tournament app for kart-racing nights on **one console**: sign-ups at a 
 | | |
 |---|---|
 | ![Kiosk sign-up "Join the Race!"](docs/screenshots/kiosk.webp) | ![Result entry: tap the finishing order, running heat total](docs/screenshots/result-entry.webp) |
-| **Kiosk sign-up**: name, driver, color, racer card | **Result entry**: tap racers in finishing order, the last one fills in |
+| **Kiosk sign-up**: name, gamer tag, badge colour | **Result entry**: tap racers in finishing order, the last one fills in |
 | ![Round preview with repeat pairings and regenerate](docs/screenshots/round-preview.webp) | ![Heat cards of a finished round](docs/screenshots/rounds.webp) |
 | **Round preview** before saving, with repeat-pairing stats | **Rounds**: heat cards with cup, placings and points |
 | ![Live standings with position arrows and tiebreak tooltip](docs/screenshots/standings.webp) | ![Finals setup with stage editor and qualified seeds](docs/screenshots/finals-setup.webp) |
@@ -92,6 +92,10 @@ npm run trace:check  # requirements × tests → docs/traceability.md; fails on 
 3. Plug in the TV. Press the **TV icon** in the top bar, drag the new window to the TV and **double-click it for fullscreen**. It updates by itself and has no buttons.
 4. Optional: open the **Kiosk** (tablet icon) in a window on a second screen attached to the laptop so people can sign up themselves ("Join the Race!"). A separate tablet does not work: it would keep its own data.
 5. Press **Export backup** once so you have a starting point.
+
+**Controllers**
+* Label your controllers 1–8. Every heat shows the controller number next to each name (round preview, heat cards, Home, TV). On the result screen the number keys are the controller numbers.
+* Nobody picks a character in the app: everyone picks theirs on the console. The app shows each player as a colour badge with their initials.
 
 **Check-in**
 * Kiosk sign-ups are checked in automatically. Quick-add guests: tick **Checked in** in *Players* when they arrive.

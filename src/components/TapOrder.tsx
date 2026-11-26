@@ -11,10 +11,13 @@ interface Props {
   /** Called once the order is complete (the last player was auto-filled). */
   onComplete?: (order: string[]) => void;
   keyboard?: boolean;
+  /** Key / label per player (the controller numbers); default 1..n. */
+  keys?: number[];
 }
 
 /** Big tap targets: tap racers in finishing order, the last one fills in automatically. */
-export function TapOrder({ players, order, onChange, onComplete, keyboard = true }: Props) {
+export function TapOrder({ players, order, onChange, onComplete, keyboard = true, keys }: Props) {
+  const keyOf = (i: number) => keys?.[i] ?? i + 1;
   const tap = (id: string) => {
     if (order.includes(id)) return;
     let next = [...order, id];
@@ -33,7 +36,7 @@ export function TapOrder({ players, order, onChange, onComplete, keyboard = true
       const el = e.target as HTMLElement;
       if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
       if (/^[1-9]$/.test(e.key)) {
-        const p = players[Number(e.key) - 1];
+        const p = players.find((_, i) => keyOf(i) === Number(e.key));
         if (p) {
           e.preventDefault();
           tap(p.id);
@@ -63,7 +66,7 @@ export function TapOrder({ players, order, onChange, onComplete, keyboard = true
             style={{ ['--c' as string]: p.color }}
             data-testid={`tap-${p.name}`}
           >
-            <span className="tap-key">{i + 1}</span>
+            <span className="tap-key">{keyOf(i)}</span>
             <Avatar player={p} size={56} />
             <span className="tap-name">{p.name}</span>
             {place > 0 && (

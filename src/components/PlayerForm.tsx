@@ -1,26 +1,23 @@
-import { AVATARS, COLORS } from '../data/avatars';
+import { COLORS } from '../data/colors';
+import { pickColor } from '../engine/color';
+import type { Player } from '../engine/types';
 import { useT } from '../store/store';
-import { Avatar } from './Avatar';
 
 export interface PlayerDraft {
   name: string;
   tag: string;
-  favorite: string;
-  avatar: string;
   color: string;
 }
 
-export function randomDraft(): PlayerDraft {
-  return {
-    name: '',
-    tag: '',
-    favorite: '',
-    avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)].id,
-    color: COLORS[Math.floor(Math.random() * (COLORS.length - 1))],
-  };
+/** An empty sign-up with the least-used badge colour preselected. */
+export function newDraft(players: Pick<Player, 'color' | 'status'>[] = []): PlayerDraft {
+  return { name: '', tag: '', color: pickColor(players) };
 }
 
-/** Name, tag, favourite, avatar and color — used by the kiosk and the edit dialog. */
+/**
+ * Name, gamer tag and badge colour: used by the kiosk and the edit dialog.
+ * No character choice: everyone picks their character on the console.
+ */
 export function PlayerForm({ draft, onChange, error, big, autoFocus }: { draft: PlayerDraft; onChange: (d: PlayerDraft) => void; error?: string; big?: boolean; autoFocus?: boolean }) {
   const t = useT();
   const set = (p: Partial<PlayerDraft>) => onChange({ ...draft, ...p });
@@ -46,38 +43,12 @@ export function PlayerForm({ draft, onChange, error, big, autoFocus }: { draft: 
           </span>
         )}
       </label>
-      <div className="form-grid">
-        <label className="field">
-          <span>
-            {t('kiosk.tag')} <small>({t('common.optional')})</small>
-          </span>
-          <input value={draft.tag} maxLength={8} onChange={(e) => set({ tag: e.target.value })} placeholder={t('kiosk.tagPlaceholder')} autoComplete="off" />
-        </label>
-        <label className="field">
-          <span>
-            {t('kiosk.favorite')} <small>({t('common.optional')})</small>
-          </span>
-          <input value={draft.favorite} maxLength={30} onChange={(e) => set({ favorite: e.target.value })} placeholder={t('kiosk.favoritePlaceholder')} autoComplete="off" />
-        </label>
-      </div>
-      <fieldset className="field">
-        <legend>{t('kiosk.avatar')}</legend>
-        <div className="avatar-grid" role="radiogroup" aria-label={t('kiosk.avatar')}>
-          {AVATARS.map((a) => (
-            <button
-              type="button"
-              key={a.id}
-              role="radio"
-              aria-checked={draft.avatar === a.id}
-              aria-label={a.label}
-              className={`avatar-choice ${draft.avatar === a.id ? 'on' : ''}`}
-              onClick={() => set({ avatar: a.id })}
-            >
-              <Avatar avatar={a.id} color={draft.color} size={big ? 64 : 44} />
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <label className="field">
+        <span>
+          {t('kiosk.tag')} <small>({t('common.optional')})</small>
+        </span>
+        <input value={draft.tag} maxLength={8} onChange={(e) => set({ tag: e.target.value })} placeholder={t('kiosk.tagPlaceholder')} autoComplete="off" data-testid="player-tag" />
+      </label>
       <fieldset className="field">
         <legend>{t('kiosk.color')}</legend>
         <div className="color-grid" role="radiogroup" aria-label={t('kiosk.color')}>
@@ -94,6 +65,7 @@ export function PlayerForm({ draft, onChange, error, big, autoFocus }: { draft: 
             />
           ))}
         </div>
+        <small>{t('kiosk.colorHint')}</small>
       </fieldset>
     </div>
   );

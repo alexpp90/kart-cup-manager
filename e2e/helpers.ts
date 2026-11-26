@@ -107,10 +107,8 @@ export async function quickAdd(page: Page, url: Url, names: string[], checkIn = 
 export async function kioskRegister(page: Page, url: Url, name: string) {
   await page.goto(url('join'));
   await page.fill('[data-testid=player-name]', name);
-  await page.click('.avatar-choice >> nth=6');
   await page.click('.color-choice >> nth=5');
-  await page.fill('input[placeholder="e.g. TT"]', name.slice(0, 2).toUpperCase());
-  await page.fill('input[placeholder="Who do you drive?"]', 'The fast one');
+  await page.fill('[data-testid=player-tag]', name.slice(0, 2).toUpperCase());
   await page.click('[data-testid=kiosk-submit]');
   await expect(page.locator('.kiosk-welcome')).toBeVisible();
 }
@@ -123,21 +121,26 @@ export async function generateRound(page: Page, url: Url) {
   await expect(page.locator('[data-testid=now-title]')).toBeVisible();
 }
 
-/** Tap finishing orders with the number keys; the last place fills itself. */
-export async function enterPerRace(page: Page, races: number, perm: (n: number) => number[], from = 0) {
+/** The number keys of the tiles: the controller numbers, in tile order. */
+async function tileKeys(page: Page): Promise<string[]> {
   await page.waitForSelector('.tap-tile');
-  const n = await page.locator('.tap-tile').count();
+  return page.locator('.tap-tile .tap-key').allTextContents();
+}
+
+/** Tap finishing orders with the number keys (controller numbers); the last place fills itself. */
+export async function enterPerRace(page: Page, races: number, perm: (n: number) => number[], from = 0) {
+  const keys = await tileKeys(page);
+  const n = keys.length;
   for (let r = from; r < races; r++) {
     await page.click(`[data-testid=race-tab-${r + 1}]`);
-    for (const k of perm(n).slice(0, n - 1)) await page.keyboard.press(String(k));
+    for (const k of perm(n).slice(0, n - 1)) await page.keyboard.press(keys[k - 1]);
   }
 }
 
 /** Final order only: tap the order with the number keys; the last place fills itself. */
 export async function enterRanking(page: Page, perm: (n: number) => number[]) {
-  await page.waitForSelector('.tap-tile');
-  const n = await page.locator('.tap-tile').count();
-  for (const k of perm(n).slice(0, n - 1)) await page.keyboard.press(String(k));
+  const keys = await tileKeys(page);
+  for (const k of perm(keys.length).slice(0, keys.length - 1)) await page.keyboard.press(keys[k - 1]);
 }
 
 export async function enterTotals(page: Page, perm: (n: number) => number[], withTie = false) {

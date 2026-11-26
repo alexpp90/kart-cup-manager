@@ -160,3 +160,14 @@ The design record with worked examples is `docs/plan-v2.md` §1. What was built:
 * **Demo** is now a knockout night (30 players, round 1 raced).
 * **Traceability:** a requirement whose text starts with "Replaced by REQ-…" stays as history and needs no test (`REQ-ENG-011`, `REQ-ENG-040`).
 * **Players without characters** (decided 2026-11-26): nobody picks a character in the app, because they pick one in the game. The avatar picker and the favourite-character field go in phase 2 (plan §3); until then they are unchanged.
+
+## 16. Players without characters, controller numbers (phase 2 of the v2 work)
+
+* **No character choice** (your decision of 2026-11-26): everyone picks a character on the console, and a second, different character in the app would only confuse. The avatar picker, the "favourite character" field and the mix-and-match driver builder of the plan are gone.
+* **A player is their name, gamer tag and a colour badge with initials** (`src/components/Avatar.tsx`, `src/engine/identity.ts`).
+  * New players get the palette colour used least so far (30 players spread over 12 colours, at most one apart); the organizer or the player can pick another. Colours must come from the palette.
+  * Initials: first letters of the first and last word, else the first two letters, else the first letter with another one of the name, so they are unique where the names allow. They are given in sign-up order, so a new player never changes somebody's badge.
+  * The initials are navy or white, whichever contrasts more; three palette colours were adjusted (blue `#2A6FD6`, pink `#C2308F`, grey `#8D99AD`) so every badge reaches 4.5:1.
+  * Marks from the state, drawn from scratch: **crown** for the leader (or champion), **flames** for two or more heat wins in a row, **clover** for a lucky loser. They show on badges from 28 px up; the "plaster after a last place" idea was dropped as unkind.
+* **Old data:** version 1 players keep their `avatar` and `favorite` fields in the data and in backups (unchanged, no repairs); the app no longer shows or needs them. New players don't get them.
+* **Controller numbers** (your request of 2026-11-26): every heat shows which player takes which controller (1–8): round preview, heat cards, Home (Now racing, Up next), result entry and the big screen. Result entry lists the players in controller order, and the number keys are the controller numbers. A heat stores its numbers (`Heat.seats`) as soon as its line-up changes after the draw: a late joiner gets the lowest free number, and moving or withdrawing a player never renumbers the others. Without stored numbers the line-up order counts (the draw order, or the snake seeding in later knockout rounds).

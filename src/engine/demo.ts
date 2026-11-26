@@ -1,4 +1,3 @@
-import { AVATARS, COLORS } from '../data/avatars';
 import { pointsForPlace, orderFromTotals } from './points';
 import { createRng, shuffle, type Rng } from './rng';
 import { suddenDeathKey } from './ranking';
@@ -42,8 +41,8 @@ export function buildDemo(newId: IdGen, now: number, opts: { players?: number; m
   const settings: Settings = { ...defaultSettings(), name: 'Demo Kart Cup', format: opts.format ?? 'knockout', heatSize: opts.max ?? 8, trackMode: 'random-cup', expectedPlayers: opts.players ?? 30 };
   let t = createTournament(settings, newId(), now);
   const names = shuffle(DEMO_NAMES, rng).slice(0, opts.players ?? 30);
-  names.forEach((name, i) => {
-    const r = addPlayer(t, { name, avatar: AVATARS[i % AVATARS.length].id, color: COLORS[i % (COLORS.length - 1)], status: 'checked-in' }, newId(), now);
+  names.forEach((name) => {
+    const r = addPlayer(t, { name, status: 'checked-in' }, newId(), now);
     if (r.ok) t = r.t;
   });
   for (let k = 0; k < (opts.roundsPlayed ?? 1); k++) {

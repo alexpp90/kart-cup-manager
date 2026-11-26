@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
-import { Card, PosBadge } from '../components/Bits';
+import { Card, PosBadge, Seat } from '../components/Bits';
 import { HeatCup } from '../components/Cup';
 import { Flag, IconDownload, IconList, IconTablet, IconTv, ItemBox, Trophy } from '../components/Icons';
 import { LateJoiners } from '../components/LateJoiners';
@@ -8,7 +8,7 @@ import { RoundPreview } from '../components/RoundPreview';
 import { SuddenDeathCard } from '../components/SuddenDeath';
 import { makePlan } from '../engine/plan';
 import { estimateRemaining } from '../engine/timing';
-import { canGenerateRound, currentRound, finalResults, finalsHeats, knockoutTable, leagueTable, leagueTie, phaseOf, roundCandidates, roundComplete, roundHeats, roundOutcome, standings, upcoming } from '../engine/tournament';
+import { bySeat, seatsOf, canGenerateRound, currentRound, finalResults, finalsHeats, knockoutTable, leagueTable, leagueTie, phaseOf, roundCandidates, roundComplete, roundHeats, roundOutcome, standings, upcoming } from '../engine/tournament';
 import type { Heat, Tournament } from '../engine/types';
 import { exportBackup } from '../lib/actions';
 import { clockTime, formatDuration, heatTitle, names, nextRoundLabel, roundLabel } from '../lib/labels';
@@ -51,10 +51,11 @@ export function Home() {
           {heatTitle(t, tour, now.id)}
         </div>
         <div className="now-players">
-          {now.playerIds.map((id) => {
+          {bySeat(now).map((id) => {
             const p = byId.get(id);
             return p ? (
               <div key={id} className="now-player">
+                <Seat n={seatsOf(now).get(id)!} />
                 <Avatar player={p} size={64} />
                 <span>{p.name}</span>
               </div>
@@ -285,11 +286,11 @@ function QueueCard({ title, heat, tour, tone }: { title: string; heat?: Heat; to
         <>
           <div className="queue-title">{heatTitle(t, tour, heat.id)}</div>
           <ul className="queue-players">
-            {heat.playerIds.map((id) => {
+            {bySeat(heat).map((id) => {
               const p = byId.get(id);
               return p ? (
                 <li key={id}>
-                  <Avatar player={p} size={26} /> {p.name}
+                  <Seat n={seatsOf(heat).get(id)!} /> <Avatar player={p} size={26} /> {p.name}
                 </li>
               ) : null;
             })}
