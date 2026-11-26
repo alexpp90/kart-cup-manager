@@ -5,6 +5,7 @@ import { StorageBanner } from './components/StorageBanner';
 import { TopBar } from './components/TopBar';
 import { useRoute } from './lib/router';
 import { BigScreen } from './screens/BigScreen';
+import { DeskSignup, PhoneJoin } from './screens/GuestSignup';
 import { Finals } from './screens/Finals';
 import { Home } from './screens/Home';
 import { Kiosk } from './screens/Kiosk';
@@ -42,6 +43,8 @@ export function App() {
 
   const [page, arg] = route;
   if (page === 'big') return <BigScreen />;
+  if (page === 's' && arg) return <PhoneJoin code={arg.toUpperCase()} />;
+  if (page === 'desk') return <DeskSignup />;
   if (recovery) {
     return (
       <>

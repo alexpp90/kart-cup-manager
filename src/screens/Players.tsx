@@ -4,6 +4,7 @@ import { Card, StatusPill, Toggle } from '../components/Bits';
 import { Modal } from '../components/Dialogs';
 import { IconEdit, IconPlus, IconTablet } from '../components/Icons';
 import { LateJoiners } from '../components/LateJoiners';
+import { PhoneSignupCard } from '../components/PhoneSignup';
 import { newDraft, PlayerForm, type PlayerDraft } from '../components/PlayerForm';
 import { allHeats, finalsReachForNewPlayer, isNameTaken, lateJoinSlots, normalizeName } from '../engine/tournament';
 import type { Player, PlayerStatus } from '../engine/types';
@@ -67,6 +68,7 @@ export function Players() {
         </div>
       </div>
       <LateJoiners />
+      <PhoneSignupCard />
       <Card>
         <div className="list-tools">
           <input type="search" className="search" placeholder={t('players.searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('common.search')} />

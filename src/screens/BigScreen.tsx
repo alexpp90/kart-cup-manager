@@ -5,7 +5,8 @@ import { CupInfo, Roulette } from '../components/Cup';
 import { Flag, ItemBox } from '../components/Icons';
 import { PodiumStage } from '../components/PodiumStage';
 import { Logo } from '../components/TopBar';
-import { bySeat, finalResults, phaseOf, seatsOf, upcoming } from '../engine/tournament';
+import { bySeat, finalResults, phaseOf, registrationOpen, seatsOf, upcoming } from '../engine/tournament';
+import { QrCode } from '../components/QrCode';
 import { Seat } from '../components/Bits';
 import type { CupPick, Heat, Tournament } from '../engine/types';
 import { heatTitle, roundLabel } from '../lib/labels';
@@ -20,6 +21,7 @@ type Slide = { kind: 'race' } | { kind: 'standings'; page: number } | { kind: 'p
 export function BigScreen() {
   const t = useT();
   const [tour, setTour] = useState<Tournament | null>(null);
+  const [join, setJoin] = useState<string | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
   // Bumped on every cup spin so the race slide gets its full time on screen again.
   const [slideNonce, setSlideNonce] = useState(0);
@@ -32,6 +34,7 @@ export function BigScreen() {
       // This window never autosaves, so it can mirror the state into the store for the shared components.
       useApp.setState({ t: m.t, prefs: { ...useApp.getState().prefs, lang: m.lang } });
       setTour(m.t);
+      if (m.join !== undefined) setJoin(m.join);
     });
     let idle = 0;
     const onMove = () => {
@@ -111,7 +114,7 @@ export function BigScreen() {
         </span>
       </header>
       <div className="big-stage" key={slideIdx + slide.kind}>
-        {slide.kind === 'race' && <RaceSlide tour={tour} now={queue[0]} next={queue[1]} ready={queue[2]} />}
+        {slide.kind === 'race' && <RaceSlide tour={tour} now={queue[0]} next={queue[1]} ready={queue[2]} join={join && registrationOpen(tour) ? join : null} />}
         {slide.kind === 'standings' && (
           <div className="big-standings">
             <h2 className="big-title">
@@ -133,9 +136,19 @@ export function BigScreen() {
                 </div>
               ))}
             </div>
-            <p className="big-join">
-              <ItemBox size={64} /> {t('big.joinNow')}
-            </p>
+            {join ? (
+              <div className="big-join big-join-qr" data-testid="big-join-qr">
+                <QrCode text={join} size={220} label={t('phone.qrLabel', { url: join })} />
+                <div>
+                  <strong>{t('big.scanToJoin')}</strong>
+                  <span>{join.replace(/^https?:\/\//, '')}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="big-join">
+                <ItemBox size={64} /> {t('big.joinNow')}
+              </p>
+            )}
           </div>
         )}
         {slide.kind === 'podium' && (
@@ -167,7 +180,7 @@ export function BigScreen() {
   );
 }
 
-function RaceSlide({ tour, now, next, ready }: { tour: Tournament; now?: Heat; next?: Heat; ready?: Heat }) {
+function RaceSlide({ tour, now, next, ready, join }: { tour: Tournament; now?: Heat; next?: Heat; ready?: Heat; join: string | null }) {
   const t = useT();
   const byId = new Map(tour.players.map((p) => [p.id, p]));
   if (!now) {
@@ -229,6 +242,12 @@ function RaceSlide({ tour, now, next, ready }: { tour: Tournament; now?: Heat; n
             )}
           </section>
         ))}
+        {join && (
+          <section className="big-queue big-join-small" data-testid="big-join-small">
+            <QrCode text={join} size={150} label={t('phone.qrLabel', { url: join })} />
+            <strong>{t('big.scanToJoin')}</strong>
+          </section>
+        )}
       </aside>
     </div>
   );

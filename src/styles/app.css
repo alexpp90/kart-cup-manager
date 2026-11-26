@@ -3383,3 +3383,158 @@ body.hide-cursor * {
   align-items: center;
   gap: 0.4vw;
 }
+
+/* ============================================================ phone sign-up (v2) */
+.qr {
+  display: block;
+  border-radius: 10px;
+  border: 3px solid var(--navy);
+  background: #fff;
+  flex-shrink: 0;
+}
+.phone-card {
+  margin: 14px 0;
+}
+.phone-live {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.phone-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
+}
+.phone-code b {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 0.12em;
+}
+.phone-url {
+  word-break: break-all;
+  font-size: 0.95rem;
+  background: var(--cloud);
+  border: 2px solid var(--silver);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+.guest {
+  min-height: 100vh;
+  padding: 16px;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+.guest-desk {
+  max-width: 1200px;
+  padding: 28px;
+}
+.guest-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 56px;
+}
+.guest-head h1 {
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  color: #fff;
+  -webkit-text-stroke: 2px var(--navy);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--navy);
+}
+.guest-title {
+  margin: 0;
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+.guest-sub {
+  margin: 0;
+  font-weight: 800;
+}
+.guest-lang {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+.guest-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+.guest-form .player-form input {
+  font-size: 1.15rem;
+}
+.guest-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 18px;
+  text-align: center;
+}
+.guest-welcome strong {
+  font-size: 2.2rem;
+}
+.desk-body {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  align-items: start;
+}
+.desk-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+}
+.desk-scan {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin: 0;
+}
+@media (max-width: 800px) {
+  .desk-body {
+    grid-template-columns: 1fr;
+  }
+}
+.big-join-qr {
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+}
+.big-join-qr .qr {
+  width: 13vw;
+  height: 13vw;
+}
+.big-join-qr div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6vh;
+}
+.big-join-qr strong {
+  font-family: var(--font-display);
+  font-size: 2.4em;
+}
+.big-join-small {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+}
+.big-join-small .qr {
+  width: 8vw;
+  height: 8vw;
+}
+.big-join-small strong {
+  font-family: var(--font-display);
+  font-size: 1.6em;
+}

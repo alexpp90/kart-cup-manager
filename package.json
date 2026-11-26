@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && vite build -c vite.server.config.ts",
     "preview": "vite preview",
     "serve": "vite build && vite preview --host --port 4173",
     "test": "vitest run --reporter=default --reporter=json --outputFile.json=reports/vitest.json",
@@ -13,7 +13,9 @@
     "typecheck": "tsc -b",
     "e2e": "npm run build && playwright test",
     "screenshots": "node e2e/readme-shots.mjs",
-    "trace:check": "node scripts/trace-check.mjs"
+    "trace:check": "node scripts/trace-check.mjs",
+    "host": "npm run build && node dist/server.mjs",
+    "package:server": "npm run build && node scripts/package-pi.mjs"
   },
   "dependencies": {
     "@fontsource/lilita-one": "^5.3.0",

@@ -93,6 +93,24 @@ Added with the v2 work (plan in `docs/plan-v2.md`, rules in DECISIONS §15). "S"
 | REQ-TIME-002 | Home and the big screen show minutes per heat (and how many heats were measured), heats left and the expected end time. | Brief v2 §1 | must | auto |
 | REQ-ARCH-001 | Every tournament change from the screens goes through `dispatch(command)`; `applyCommand` is pure, validates its input and rejects invalid commands without changing state. | Brief v2 §2; D§15 | must | auto |
 
+## Kart Cup server and phone sign-up (REQ-HOST, REQ-SEC)
+
+Phase 3a of the v2 work (DECISIONS §17). Hosting option A: the server runs on a device on the party
+network (a Raspberry Pi 3 at the user's request, or a laptop). The organizer's browser stays the
+source of truth for the tournament.
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-HOST-001 | `server.mjs` (Node 18+, no dependencies) serves the app with a server marker and strict headers, starts sign-up sessions with a 6-character join code (no 0/O/1/I/L) and a 128-bit admin key, stores each session as a file written atomically (only a hash of the key), keeps them across restarts and deletes them when they expire. | Brief v2 §2; user 2026-11-26; D§17 | must | auto |
+| REQ-HOST-002 | Phone sign-up: the organizer starts it on the Players page and gets a QR code, the join code and the link; the big screen shows the QR code while registration is open; a guest signs up on the phone (name, tag, colour) and appears in the organizer's player list within seconds; taken names, closed registration and a stopped session are refused with a clear message. | Brief v2 §2; user 2026-11-26 | must | auto |
+| REQ-HOST-003 | Sign-up station on the server's own screen (`#/desk`, mouse and keyboard) with the same form and the QR code for phones; it works only on the server itself. | User 2026-11-26; D§17 | must | auto |
+| REQ-HOST-004 | QR codes are generated in the app by its own encoder (byte mode, level M, versions 1–10) and read back exactly. | Brief v2 §2 (no third-party requests) | must | auto |
+| REQ-HOST-005 | The offline single file and any copy not served by the Kart Cup server make no network request and explain that phone sign-up needs the server. | Brief v2 §2 | must | auto |
+| REQ-HOST-006 | On a Raspberry Pi 3 the installer sets up the server as a service on port 8080 and the station full screen; a real phone scans the QR code and signs up. | User 2026-11-26 | must | manual |
+| REQ-SEC-001 | Everything a guest sends is treated as hostile: JSON only, bodies ≤ 16 KB, names ≤ 24 and tags ≤ 8 characters as people see them, control and bidi characters removed, colours only from the palette; admin requests need the key, compared in constant time; guests never see it. | Brief v2 §2 | must | auto |
+| REQ-SEC-002 | Rate limits and caps: ≤ 10 sign-ups per minute per device and ≤ 30 per session, ≤ 20 wrong codes per 10 minutes per device, ≤ 5 new sessions per hour per device, a cap on open sessions, ≤ 64 players per session. | Brief v2 §2 | must | auto |
+| REQ-SEC-003 | The server makes no outgoing requests and logs no IP addresses. | Brief v2 §2 | must | auto |
+
 ## UI and journeys (REQ-UI)
 
 | ID | Requirement | Source | Prio | Kind |

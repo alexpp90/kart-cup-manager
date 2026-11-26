@@ -68,7 +68,7 @@ interface Loaded {
 }
 
 /** The big screen window only listens: it must not even probe the storage with a test write. */
-const READ_ONLY = typeof location !== 'undefined' && /^#\/?big\b/.test(location.hash);
+const READ_ONLY = typeof location !== 'undefined' && /^#\/?(big|s|desk)\b/.test(location.hash);
 
 function loadPersisted(): Loaded {
   const storage = getStorage();

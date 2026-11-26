@@ -5,6 +5,7 @@ import type { Tournament } from '../engine/types';
 import type { Lang } from '../i18n';
 import { parsePersisted, PREFS_KEY, STORAGE_KEY } from './persist';
 import { useApp } from './store';
+import { joinUrl, usePhone } from '../lib/server';
 
 const CHANNEL = 'kart-cup-manager';
 
@@ -12,6 +13,8 @@ export interface SyncMessage {
   type: 'state';
   t: Tournament | null;
   lang: Lang;
+  /** Phone sign-up link while a session runs (the TV shows its QR code). */
+  join?: string | null;
 }
 
 export function startBroadcast(): () => void {
@@ -19,7 +22,8 @@ export function startBroadcast(): () => void {
   const ch = new BroadcastChannel(CHANNEL);
   const send = () => {
     const s = useApp.getState();
-    ch.postMessage({ type: 'state', t: s.t, lang: s.prefs.lang } satisfies SyncMessage);
+    const phone = usePhone.getState().session;
+    ch.postMessage({ type: 'state', t: s.t, lang: s.prefs.lang, join: phone ? joinUrl(phone) : null } satisfies SyncMessage);
   };
   ch.onmessage = (e) => {
     if (e.data?.type === 'hello') send();
@@ -27,8 +31,12 @@ export function startBroadcast(): () => void {
   const unsub = useApp.subscribe((s, prev) => {
     if (s.t !== prev.t || s.prefs.lang !== prev.prefs.lang) send();
   });
+  const unsubPhone = usePhone.subscribe((s, prev) => {
+    if (s.session !== prev.session) send();
+  });
   return () => {
     unsub();
+    unsubPhone();
     ch.close();
   };
 }

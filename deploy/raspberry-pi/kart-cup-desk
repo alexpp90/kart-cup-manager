@@ -1,0 +1,14 @@
+#!/bin/bash
+# Opens the sign-up station full screen on this Pi's own screen.
+# Leave it with Alt+F4 (or Ctrl+W).
+URL="http://localhost:@PORT@/#/desk"
+for _ in $(seq 1 60); do
+  curl -fsS "http://localhost:@PORT@/api/info" >/dev/null 2>&1 && break
+  sleep 1
+done
+BROWSER="$(command -v chromium-browser || command -v chromium)"
+if [ -z "$BROWSER" ]; then
+  echo "Chromium is not installed (sudo apt install chromium-browser)." >&2
+  exit 1
+fi
+exec "$BROWSER" --kiosk --noerrdialogs --disable-session-crashed-bubble --disable-infobars --no-first-run --password-store=basic "$URL"

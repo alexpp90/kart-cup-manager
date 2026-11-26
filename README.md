@@ -54,6 +54,24 @@ This builds and serves the app on port 4173 on all network interfaces. On anothe
 
 **The data stays in the browser that opens the app.** Each device (and even each address: the `.nord` name and the IP count as two) has its own local storage. A phone that opens the app gets its own, separate tournament; it does **not** sync with the laptop, and the big screen only follows windows in the same browser. Use it to run the whole tournament on that device, and move a tournament between devices with *Export backup* / *Import backup*.
 
+## Phone sign-up with a QR code (Kart Cup server)
+
+Guests can sign up on their own phone by scanning a QR code on the TV. That needs the small **Kart Cup
+server** on a device on the party network: a Raspberry Pi (`deploy/raspberry-pi/README.md`, with a
+full-screen sign-up station on the Pi's own screen as a fallback) or any computer with Node.js 18+:
+
+```bash
+npm run package:server
+```
+
+```bash
+node dist/kart-cup-server/server.mjs
+```
+
+Open the address it prints (e.g. `http://192.168.178.50:8080`) on the organizer's laptop, then
+*Players → Phone sign-up → Start phone sign-up*. Phones must be on the same Wi-Fi. The offline
+`index.html` keeps working without any of this and never touches the network.
+
 ## Tests
 
 ```bash

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Kart Cup sign-up station
+Comment=Join the Race! sign-up form on this screen
+Exec=/usr/local/bin/kart-cup-desk
+X-GNOME-Autostart-enabled=true

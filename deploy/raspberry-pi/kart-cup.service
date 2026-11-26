@@ -1,0 +1,21 @@
+[Unit]
+Description=Kart Cup server (app + phone sign-up)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+Environment=PORT=@PORT@
+Environment=DATA_DIR=/var/lib/kart-cup
+ExecStart=/usr/bin/env node /opt/kart-cup/server.mjs
+Restart=always
+RestartSec=2
+# Hardening: the server only needs its data folder.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/kart-cup
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
