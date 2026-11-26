@@ -1,9 +1,9 @@
 #!/bin/bash
 # Kart Cup server on a Raspberry Pi (made for a Pi 3 Model B with Raspberry Pi
 # OS "trixie" or "bookworm", 32-bit, with desktop). Run on the Pi from this folder:
-#   sudo bash install.sh                 own "Kart Cup" Wi-Fi + server + sign-up station
+#   sudo bash install.sh                 own "Kart Cup" Wi-Fi + server + admin screen
 #   sudo bash install.sh --no-hotspot    use the party router's network instead
-#   sudo bash install.sh --no-desk       no station on the Pi's screen
+#   sudo bash install.sh --no-desk       no admin screen on the Pi's own screen
 #   sudo bash install.sh --wifi-at-boot  set up the Kart Cup Wi-Fi but switch to it only at the next boot
 #                                        (keeps an SSH session over the home Wi-Fi alive)
 #   sudo bash install.sh --no-optimize   leave the system services as they are
@@ -11,10 +11,10 @@
 #   * installs Node.js if missing, copies index.html and server.mjs to /opt/kart-cup,
 #   * runs the server at every boot on port 80, reached by name: http://kartcup.lan
 #     on the Kart Cup Wi-Fi, http://kartcup.local through a router,
-#   * opens the Pi's own Wi-Fi "Kart Cup" (WPA2, generated password): phones join it
-#     with one QR code and the sign-up page opens by itself; with a cable to a router
-#     they keep their internet,
-#   * opens the sign-up station full screen when the desktop starts.
+#   * opens the Pi's own Wi-Fi "Kart Cup" (hostapd, WPA2, generated password): phones
+#     join it with one QR code and the sign-up page opens by itself; with a cable to a
+#     router they keep their internet,
+#   * opens the organizer's admin screen full screen when the desktop starts.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,7 +33,6 @@ for arg in "$@"; do
 done
 SSID="${KART_SSID:-Kart Cup}"
 NAME="kartcup"
-AP_IP="10.42.0.1"
 
 fail() { echo "ERROR: $*" >&2; exit 1; }
 [ "$(id -u)" -eq 0 ] || fail "Please run with sudo: sudo bash install.sh"
@@ -42,15 +41,27 @@ if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ]; then
   USER_NAME="$(getent passwd 1000 | cut -d: -f1)"
 fi
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
-for f in index.html server.mjs kart-cup.service kart-cup-desk kart-cup-desk.desktop kart-cup-dns.conf; do
+for f in index.html server.mjs kart-cup.service kart-cup-desk kart-cup-desk.desktop kart-cup-dns.conf kart-cup-dnsmasq.conf kart-cup-ap kart-cup-wifi.service kart-cup-hostapd.service kart-cup-dnsmasq.service; do
   [ -f "$HERE/$f" ] || fail "Missing $f next to install.sh"
 done
 
-echo "== Node.js"
-if ! command -v node >/dev/null 2>&1; then
-  apt-get update
-  apt-get install -y nodejs
+echo "== Packages"
+NEED=""
+command -v node >/dev/null 2>&1 || NEED="$NEED nodejs"
+if [ "$HOTSPOT" = "1" ]; then
+  [ -x /usr/sbin/hostapd ] || NEED="$NEED hostapd"
+  [ -x /usr/sbin/dnsmasq ] || NEED="$NEED dnsmasq"
 fi
+if [ -n "$NEED" ]; then
+  apt-get update
+  # shellcheck disable=SC2086
+  DEBIAN_FRONTEND=noninteractive apt-get install -y $NEED
+fi
+# Their own services stay off: the Kart Cup units below run them with our settings.
+for unit in hostapd dnsmasq; do
+  systemctl disable --now "$unit" >/dev/null 2>&1 || true
+  systemctl mask "$unit" >/dev/null 2>&1 || true
+done
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 [ "$NODE_MAJOR" -ge 18 ] || fail "Node.js $NODE_MAJOR is too old (18 or newer needed)."
 echo "Node.js $(node --version)"
@@ -83,6 +94,7 @@ fi
     echo "CAPTIVE=1"
     echo "WIFI_SSID=\"$SSID\""
     echo "WIFI_PASSWORD=\"$PASS\""
+    echo "WIFI_COUNTRY=$(raspi-config nonint get_wifi_country 2>/dev/null || echo DE)"
   else
     echo "HOST_NAME=$NAME.local"
   fi
@@ -96,7 +108,7 @@ systemctl enable kart-cup.service
 systemctl restart kart-cup.service
 
 if [ "$DESK" = "1" ]; then
-  echo "== Sign-up station on this screen"
+  echo "== Admin screen on this Pi"
   install -m 755 "$HERE/kart-cup-desk" /usr/local/bin/kart-cup-desk
   install -d -o "$USER_NAME" -g "$USER_NAME" "$USER_HOME/.config/autostart"
   install -m 644 -o "$USER_NAME" -g "$USER_NAME" "$HERE/kart-cup-desk.desktop" "$USER_HOME/.config/autostart/kart-cup-desk.desktop"
@@ -118,34 +130,36 @@ if [ "$OPTIMIZE" = "1" ]; then
     systemctl --global mask "$unit.service" >/dev/null 2>&1 || true
   done
   if [ "$DESK" = "1" ] && command -v raspi-config >/dev/null 2>&1; then
-    # The station comes up by itself: log in to the desktop automatically, never blank the screen.
+    # The admin screen comes up by itself: log in to the desktop automatically, never blank the screen.
     raspi-config nonint do_boot_behaviour B4 || true
     raspi-config nonint do_blanking 1 || true
   fi
 fi
 
 if [ "$HOTSPOT" = "1" ]; then
-  echo "== Wi-Fi \"$SSID\""
-  command -v nmcli >/dev/null 2>&1 || fail "NetworkManager (nmcli) is needed for the Wi-Fi. Use --no-hotspot to skip it."
-  WIFI_DEV="$(nmcli -t -f DEVICE,TYPE device | awk -F: '$2=="wifi"{print $1; exit}')"
-  [ -n "$WIFI_DEV" ] || fail "No Wi-Fi device found. Use --no-hotspot to skip the Wi-Fi."
-  install -d /etc/NetworkManager/dnsmasq-shared.d
-  install -m 644 "$HERE/kart-cup-dns.conf" /etc/NetworkManager/dnsmasq-shared.d/kart-cup.conf
+  echo "== Wi-Fi \"$SSID\" (hostapd + dnsmasq)"
+  WIFI_DEV="wlan0"
+  ip link show "$WIFI_DEV" >/dev/null 2>&1 || fail "No Wi-Fi device $WIFI_DEV. Use --no-hotspot to skip the Wi-Fi."
+  install -m 755 "$HERE/kart-cup-ap" /usr/local/sbin/kart-cup-ap
+  install -m 644 "$HERE/kart-cup-dns.conf" "$HERE/kart-cup-dnsmasq.conf" /etc/kart-cup/
+  for unit in kart-cup-wifi kart-cup-hostapd kart-cup-dnsmasq; do
+    install -m 644 "$HERE/$unit.service" "/etc/systemd/system/$unit.service"
+  done
+  # NetworkManager leaves wlan0 alone (the cable stays with NetworkManager). Older
+  # installs used a NetworkManager hotspot; phones could not join it on a Pi 3.
+  install -d /etc/NetworkManager/conf.d
+  printf '[keyfile]\nunmanaged-devices=interface-name:%s\n' "$WIFI_DEV" > /etc/NetworkManager/conf.d/kart-cup.conf
   nmcli connection delete kartcup-ap >/dev/null 2>&1 || true
-  nmcli connection add type wifi ifname "$WIFI_DEV" con-name kartcup-ap autoconnect yes \
-    connection.autoconnect-priority 100 ssid "$SSID" \
-    802-11-wireless.mode ap 802-11-wireless.band bg 802-11-wireless.channel 6 \
-    ipv4.method shared ipv4.addresses "$AP_IP/24" ipv6.method disabled \
-    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASS" wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp \
-    wifi-sec.pmf disable 802-11-wireless.powersave 2 >/dev/null
-  # PMF off: the Pi 3's Wi-Fi chip (brcmfmac) cannot run an access point with
-  # protected management frames (WPA-PSK-SHA256); with them the hotspot never starts.
+  rm -f /etc/NetworkManager/dnsmasq-shared.d/kart-cup.conf
+  systemctl daemon-reload
+  systemctl enable kart-cup-wifi kart-cup-hostapd kart-cup-dnsmasq >/dev/null
   if [ "$WIFI_NOW" = "1" ]; then
     echo "Switching $WIFI_DEV to the Kart Cup Wi-Fi now. If you are connected to this Pi over Wi-Fi (SSH), that connection ends here;"
     echo "the Pi's screen or a network cable keep working."
-    nmcli connection up kartcup-ap >/dev/null || fail "The Wi-Fi did not start. See: journalctl -u NetworkManager -n 50"
+    systemctl reload NetworkManager || true
+    systemctl restart kart-cup-wifi kart-cup-hostapd kart-cup-dnsmasq || fail "The Wi-Fi did not start. See: journalctl -u kart-cup-hostapd -n 50"
   else
-    echo "The Kart Cup Wi-Fi starts at the next boot (it has priority over other Wi-Fi networks)."
+    echo "The Kart Cup Wi-Fi starts at the next boot."
   fi
 fi
 
@@ -159,5 +173,5 @@ if [ "$HOTSPOT" = "1" ]; then
   echo "  App:        http://$NAME.lan   (on the Kart Cup Wi-Fi)"
 fi
 echo "  Through a router cable: http://$NAME.local"
-[ "$DESK" = "1" ] && echo "  Sign-up station on this Pi: starts after the next login, or run: kart-cup-desk"
+[ "$DESK" = "1" ] && echo "  Admin screen on this Pi: opens after the next login, or run: kart-cup-desk"
 echo "  Status / log: systemctl status kart-cup   /   journalctl -u kart-cup"

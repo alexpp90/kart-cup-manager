@@ -1,0 +1,57 @@
+#!/bin/bash
+# The Pi's own "Kart Cup" Wi-Fi: wlan0 as an access point with hostapd (plain
+# WPA2-PSK; the Pi 3's Wi-Fi chip cannot do the PMF / WPA-PSK-SHA256 mode that
+# NetworkManager's hotspot advertises, so phones aborted the handshake there).
+#   kart-cup-ap start   take wlan0 from NetworkManager, give it 10.42.0.1,
+#                       share the cable's internet (if any), write hostapd.conf
+#   kart-cup-ap stop    undo all of it and give wlan0 back to NetworkManager
+set -euo pipefail
+# shellcheck disable=SC1091
+. /etc/kart-cup/env
+DEV="${WIFI_DEV:-wlan0}"
+IP="10.42.0.1"
+RUN=/run/kart-cup
+
+case "${1:-}" in
+  start)
+    nmcli device set "$DEV" managed no >/dev/null 2>&1 || true
+    ip addr flush dev "$DEV"
+    ip link set "$DEV" up
+    ip addr add "$IP/24" dev "$DEV"
+    # Guests reach the internet through a router cable, if there is one.
+    sysctl -q -w net.ipv4.ip_forward=1
+    nft delete table ip kartcup >/dev/null 2>&1 || true
+    nft add table ip kartcup
+    nft add chain ip kartcup post '{ type nat hook postrouting priority 100 ; }'
+    nft add rule ip kartcup post ip saddr 10.42.0.0/24 oifname != "$DEV" masquerade
+    install -d -m 700 "$RUN"
+    umask 077
+    cat > "$RUN/hostapd.conf" <<CONF
+interface=$DEV
+driver=nl80211
+ssid=$WIFI_SSID
+utf8_ssid=1
+country_code=${WIFI_COUNTRY:-DE}
+hw_mode=g
+channel=6
+ieee80211n=1
+wmm_enabled=1
+auth_algs=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
+ieee80211w=0
+wpa_passphrase=$WIFI_PASSWORD
+CONF
+    ;;
+  stop)
+    nft delete table ip kartcup >/dev/null 2>&1 || true
+    ip addr flush dev "$DEV" || true
+    nmcli device set "$DEV" managed yes >/dev/null 2>&1 || true
+    ;;
+  *)
+    echo "usage: kart-cup-ap start|stop" >&2
+    exit 1
+    ;;
+esac

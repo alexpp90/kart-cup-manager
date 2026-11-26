@@ -6,8 +6,9 @@ The Pi opens its own Wi-Fi called **Kart Cup** and runs the Kart Cup server:
   "Join the Race!" sign-up opens by itself. No app, no typing of addresses.
 * The app is reached by name: **http://kartcup.lan** (on the Kart Cup Wi-Fi) or
   **http://kartcup.local** (through a router cable). Never by IP.
-* With a screen, keyboard and mouse on the Pi, a **sign-up station** runs full screen on it
-  as a fallback, with the same QR codes.
+* With a screen, keyboard and mouse on the Pi, the Pi is the **organizer's console**: after
+  boot it opens the admin screen full screen (add players, start phone sign-up, **Show QR code**
+  across the whole screen, run the races). A laptop can open the same app as `http://kartcup.lan`.
 * With a network cable from the Pi to a router, guests on the Kart Cup Wi-Fi keep their
   internet. Without a cable everything still works, only the internet is missing.
 
@@ -42,13 +43,19 @@ image directly. Then copy the **`kart-cup-server`** folder onto the card's **boo
    the Pi's Wi-Fi into the **Kart Cup** Wi-Fi. At the end it shows the **Wi-Fi password**
    (it is also printed on the TV and the station next to the QR code, and kept in
    `/etc/kart-cup/env`).
-3. Log out and in (or restart): the sign-up station opens full screen. Leave it with **Alt+F4**,
-   open it again with `kart-cup-desk`.
+3. Restart the Pi: it logs in by itself and opens the admin screen full screen. Leave it with
+   **Alt+F4**, open it again with `kart-cup-desk` (`kart-cup-desk form` opens the plain sign-up
+   form for guests instead).
 
 Options: `--no-hotspot` uses the party router's network instead of the Pi's own Wi-Fi (then
 use `http://kartcup.local`); `--no-desk` skips the station; `--wifi-at-boot` switches to the
 Kart Cup Wi-Fi only at the next boot (when you install over SSH on the home Wi-Fi);
 `--no-optimize` leaves the system services alone.
+
+The Wi-Fi runs with **hostapd** (plain WPA2) and **dnsmasq** (addresses, `kartcup.lan`, the
+sign-up redirect). NetworkManager keeps the cable but leaves the Wi-Fi alone. To give the Wi-Fi
+back to NetworkManager: `sudo systemctl disable --now kart-cup-wifi` and
+`sudo rm /etc/NetworkManager/conf.d/kart-cup.conf`, then reboot.
 
 The installer also tunes the Pi 3 for the night: Bluetooth, NFS, PackageKit and the automatic
 apt runs are switched off, logs are capped at 50 MB, unused desktop helpers (camera, phone,
@@ -61,10 +68,9 @@ or a thin cable the Pi slows down and the Wi-Fi can drop; `vcgencmd get_throttle
 
 ## 3. Test (5 minutes, do it before the party)
 
-1. Organizer's laptop: join the **Kart Cup** Wi-Fi (password from step 2) and open
-   **http://kartcup.lan**. (With a router cable you can also stay on your normal Wi-Fi and open
-   **http://kartcup.local**.)
-2. Create a test tournament. *Home → Phone sign-up → Start phone sign-up*.
+1. On the Pi's admin screen (or a laptop on the Kart Cup Wi-Fi at **http://kartcup.lan**):
+   create a test tournament, *Home → Start phone sign-up*, then **Show QR code**.
+2. (The QR codes are also on the TV window and in the phone card on Home.)
 3. Phone: scan the **left** QR code with the camera → "Join Kart Cup?" → join. The sign-up page
    opens by itself (iPhone: a sheet; Android: tap the "Sign in to network" message). Sign up "Test".
 4. Within two seconds "Test" appears on the laptop. On the Pi's screen the station shows the same QR codes.
@@ -81,13 +87,13 @@ or a thin cable the Pi slows down and the Wi-Fi can drop; `vcgencmd get_throttle
 | Problem | Check |
 |---|---|
 | The phone joins the Wi-Fi but no page opens | Open **http://kartcup.lan** in the phone's browser, or scan the right (small) QR code. |
-| "Kart Cup" Wi-Fi doesn't appear | `nmcli connection up kartcup-ap` on the Pi; `journalctl -u NetworkManager -n 50`. On a Pi 3 the hotspot needs PMF off (the installer does that). |
+| "Kart Cup" Wi-Fi doesn't appear | `systemctl status kart-cup-hostapd` and `journalctl -u kart-cup-hostapd -n 50` on the Pi |
 | The laptop says "Server not reachable" | Laptop on the Kart Cup Wi-Fi? `systemctl status kart-cup` on the Pi. |
 | Guests have no internet on the Kart Cup Wi-Fi | Only with a router cable on the Pi. Without, it's sign-up only (phones may switch back to mobile data). |
-| The station doesn't open after login | Run `kart-cup-desk` in a terminal; install Chromium if missing: `sudo apt install chromium` |
+| The admin screen doesn't open after boot | Run `kart-cup-desk` in a terminal; install Chromium if missing: `sudo apt install chromium` |
 | Logs | `journalctl -u kart-cup -n 50` (the server logs no IP addresses) |
 
-To go back to the Pi's normal Wi-Fi: `sudo nmcli connection delete kartcup-ap`.
+To go back to the Pi's normal Wi-Fi: see the note under step 2.
 
 ## Update to a new version
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=Kart Cup Wi-Fi: wlan0 as access point (address, NAT)
+After=NetworkManager.service
+Wants=kart-cup-hostapd.service kart-cup-dnsmasq.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/kart-cup-ap start
+ExecStop=/usr/local/sbin/kart-cup-ap stop
+
+[Install]
+WantedBy=multi-user.target

@@ -55,7 +55,7 @@ test.describe('[journey] phone sign-up', () => {
     await ctx.close();
   });
 
-  test('[REQ-HOST-001][REQ-HOST-002][REQ-HOST-004][REQ-HOST-008] the organizer starts phone sign-up and gets a QR code and a join code', async () => {
+  test('[REQ-HOST-001][REQ-HOST-002][REQ-HOST-004][REQ-HOST-008][REQ-HOST-010] the organizer starts phone sign-up and gets a QR code and a join code', async () => {
     await page.goto(SERVER + '/');
     await page.click('[data-testid=new-tournament]');
     await page.fill('[data-testid=setup-name]', 'Phone Night');
@@ -71,6 +71,13 @@ test.describe('[journey] phone sign-up', () => {
     await expect(page.locator('[data-testid=phone-url]')).toHaveText(`http://kartcup.lan:4180/#/s/${code}`);
     await expect(page.locator('.phone-card [data-testid=join-qrs] [data-testid=qr]')).toHaveCount(2);
     await expect(page.locator('.phone-card [data-testid=wifi-password]')).toContainText('testpass23');
+    // "Show QR code" puts the codes across the whole screen (the Pi's admin screen).
+    await page.click('[data-testid=phone-show-qr]');
+    await expect(page.locator('[data-testid=qr-overlay] [data-testid=qr]')).toHaveCount(2);
+    await page.waitForTimeout(400);
+    await shot(page, 'phone', 'qr-fullscreen');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-testid=qr-overlay]')).toHaveCount(0);
     await shot(page, 'phone', 'organizer-card');
   });
 

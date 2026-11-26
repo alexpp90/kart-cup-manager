@@ -1,0 +1,13 @@
+[Unit]
+Description=Kart Cup Wi-Fi: addresses and names (dnsmasq)
+Requires=kart-cup-wifi.service
+After=kart-cup-wifi.service kart-cup-hostapd.service
+PartOf=kart-cup-wifi.service
+
+[Service]
+ExecStart=/usr/sbin/dnsmasq -k -C /etc/kart-cup/kart-cup-dnsmasq.conf
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
