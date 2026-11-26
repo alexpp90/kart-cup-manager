@@ -31,6 +31,8 @@ export type PhoneStatus = 'off' | 'starting' | 'live' | 'offline' | 'ended';
 export interface ServerInfo {
   /** The server's name for guests (e.g. kartcup.lan), when it has one. */
   host: string | null;
+  /** Where guests and the organizer reach the app (name and port), e.g. http://kartcup.lan */
+  base: string | null;
   /** The Pi's own Wi-Fi, when it runs one. */
   wifi: { ssid: string; password: string } | null;
   captive: boolean;
@@ -53,6 +55,7 @@ export async function loadServerInfo(): Promise<ServerInfo | null> {
     const w = r.body.wifi as { ssid?: unknown; password?: unknown } | null;
     const info: ServerInfo = {
       host: typeof r.body.host === 'string' ? r.body.host : null,
+      base: Array.isArray(r.body.bases) && typeof r.body.bases[0] === 'string' ? pickBase(r.body.bases as string[]) : null,
       wifi: w && typeof w.ssid === 'string' ? { ssid: w.ssid, password: typeof w.password === 'string' ? w.password : '' } : null,
       captive: r.body.captive === true,
     };

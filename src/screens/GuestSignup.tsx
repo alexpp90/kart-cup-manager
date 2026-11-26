@@ -7,7 +7,9 @@ import { Flag, ItemBox } from '../components/Icons';
 import { PlayerForm, type PlayerDraft } from '../components/PlayerForm';
 import { JoinQrs } from '../components/JoinQrs';
 import { COLORS } from '../data/colors';
-import { localSession, sessionInfo, signUp, type GuestError } from '../lib/server';
+import { loadServerInfo, localSession, sessionInfo, signUp, type GuestError, type ServerInfo } from '../lib/server';
+import { QrCode } from '../components/QrCode';
+import { wifiQrText } from '../shared/signup';
 import { sound } from '../lib/sound';
 import { useApp, useT } from '../store/store';
 
@@ -149,7 +151,7 @@ export function DeskSignup() {
   let body;
   if (session === undefined) body = <p className="muted">…</p>;
   else if (session === 'not-local') body = <p className="notice notice-warn" data-testid="desk-not-local">{t('desk.notLocal')}</p>;
-  else if (session === null) body = <p className="notice" data-testid="desk-waiting">{t('desk.waiting')}</p>;
+  else if (session === null) body = <DeskWaiting />;
   else if (!open) body = <p className="notice notice-warn" data-testid="guest-closed">{t('kiosk.closed')}</p>;
   else
     body = (
@@ -178,6 +180,45 @@ export function DeskSignup() {
           <Welcome who={welcome} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Before sign-up starts: how the organizer gets going, with the Wi-Fi and the address. */
+function DeskWaiting() {
+  const t = useT();
+  const [info, setInfo] = useState<ServerInfo | null>(null);
+  useEffect(() => {
+    void loadServerInfo().then(setInfo);
+  }, []);
+  const app = info?.base ?? location.origin.replace('localhost', 'kartcup.local');
+  return (
+    <div className="card desk-waiting" data-testid="desk-waiting">
+      <h2 className="display">{t('desk.waiting')}</h2>
+      <ol className="desk-steps">
+        {info?.wifi && (
+          <li>
+            <QrCode text={wifiQrText(info.wifi.ssid, info.wifi.password)} size={150} label={t('wifi.qrLabel', { ssid: info.wifi.ssid })} />
+            <div>
+              <b>{t('desk.step.wifi', { ssid: info.wifi.ssid })}</b>
+              <span className="wifi-pass">{t('wifi.password', { ssid: info.wifi.ssid, pw: info.wifi.password })}</span>
+            </div>
+          </li>
+        )}
+        <li>
+          <QrCode text={app} size={150} label={t('phone.qrLabel', { url: app })} />
+          <div>
+            <b>{t('desk.step.open')}</b>
+            <span className="desk-url">{app.replace(/^http:\/\//, '')}</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <b>{t('desk.step.start')}</b>
+            <span>{t('desk.step.startHint')}</span>
+          </div>
+        </li>
+      </ol>
     </div>
   );
 }

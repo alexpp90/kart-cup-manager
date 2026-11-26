@@ -573,9 +573,13 @@ const en = {
   'guest.err.rate-limited': 'Too many tries. Wait a minute and try again.',
   'guest.err.unknown-session': 'This sign-up link is not valid (any more). Scan the QR code on the big screen again.',
   'guest.err.network': 'No connection to the Kart Cup server. Are you on the party Wi-Fi?',
-  'desk.waiting': 'Waiting for the organizer to start phone sign-up…',
+  'desk.waiting': 'Sign-up starts soon',
   'desk.notLocal': 'This sign-up station only works on the screen of the Kart Cup server itself. On other devices, scan the QR code.',
   'desk.scan': 'Or scan with your phone',
+  'desk.step.wifi': 'Organizer: join the “{ssid}” Wi-Fi',
+  'desk.step.open': 'Open the app',
+  'desk.step.start': 'Create the tournament and press “Start phone sign-up”',
+  'desk.step.startHint': 'This screen then shows the sign-up form and the QR codes by itself.',
   'big.scanToJoin': 'Scan to join!',
 
   // Sign-up first, Start racing, race setup per round
@@ -1182,9 +1186,13 @@ const de: Record<Key, string> = {
   'guest.err.rate-limited': 'Zu viele Versuche. Warte eine Minute und versuche es noch einmal.',
   'guest.err.unknown-session': 'Dieser Anmelde-Link gilt nicht (mehr). Scanne den QR-Code auf dem großen Bildschirm noch einmal.',
   'guest.err.network': 'Keine Verbindung zum Kart-Cup-Server. Bist du im Party-WLAN?',
-  'desk.waiting': 'Warte darauf, dass die Turnierleitung die Anmeldung per Handy startet …',
+  'desk.waiting': 'Die Anmeldung startet gleich',
   'desk.notLocal': 'Diese Anmelde-Station funktioniert nur am Bildschirm des Kart-Cup-Servers selbst. Auf anderen Geräten den QR-Code scannen.',
   'desk.scan': 'Oder mit dem Handy scannen',
+  'desk.step.wifi': 'Turnierleitung: ins WLAN „{ssid}“ gehen',
+  'desk.step.open': 'Die App öffnen',
+  'desk.step.start': 'Turnier anlegen und „Anmeldung per Handy starten“ drücken',
+  'desk.step.startHint': 'Dieser Bildschirm zeigt dann von selbst das Anmeldeformular und die QR-Codes.',
   'big.scanToJoin': 'Scannen und mitfahren!',
 
   // Erst anmelden, dann Rennen starten, Rennmodus pro Runde

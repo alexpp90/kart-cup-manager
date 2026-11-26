@@ -40,6 +40,21 @@ test.describe('[journey] phone sign-up', () => {
     await ctx.close();
   });
 
+  test('[REQ-HOST-003] before sign-up starts, the station shows the organizer how to begin: Wi-Fi QR code, password and address', async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const desk = await ctx.newPage();
+    await desk.goto(`${SERVER}/#/desk`);
+    const waiting = desk.locator('[data-testid=desk-waiting]');
+    await expect(waiting).toBeVisible();
+    await expect(waiting.locator('[data-testid=qr]')).toHaveCount(2);
+    await expect(waiting).toContainText('testpass23');
+    await expect(waiting).toContainText('kartcup.lan:4180');
+    await expect(waiting).toContainText('Start phone sign-up');
+    await desk.waitForTimeout(600);
+    await shot(desk, 'phone', 'station-waiting');
+    await ctx.close();
+  });
+
   test('[REQ-HOST-001][REQ-HOST-002][REQ-HOST-004][REQ-HOST-008] the organizer starts phone sign-up and gets a QR code and a join code', async () => {
     await page.goto(SERVER + '/');
     await page.click('[data-testid=new-tournament]');
