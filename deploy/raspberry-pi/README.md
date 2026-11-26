@@ -1,78 +1,84 @@
 # Kart Cup server on a Raspberry Pi 3
 
-The Pi runs the Kart Cup server: it serves the app to the organizer's laptop and lets guests sign up
-by **scanning a QR code with their phone**. With a screen, mouse and keyboard on the Pi, it also shows
-a **sign-up station** ("Join the Race!") as a fallback for guests whose phone can't scan or join the Wi-Fi.
+The Pi opens its own Wi-Fi called **Kart Cup** and runs the Kart Cup server:
 
-The same two files (`index.html`, `server.mjs`) run on any other device with Node.js 18 or newer
-(a laptop: `node server.mjs`), so nothing here ties the app to the Pi. This folder only adds the Pi's
-auto-start and the station.
+* Guests scan **one QR code** on the TV: the phone joins the Kart Cup Wi-Fi and the
+  "Join the Race!" sign-up opens by itself. No app, no typing of addresses.
+* The app is reached by name: **http://kartcup.lan** (on the Kart Cup Wi-Fi) or
+  **http://kartcup.local** (through a router cable). Never by IP.
+* With a screen, keyboard and mouse on the Pi, a **sign-up station** runs full screen on it
+  as a fallback, with the same QR codes.
+* With a network cable from the Pi to a router, guests on the Kart Cup Wi-Fi keep their
+  internet. Without a cable everything still works, only the internet is missing.
+
+The two app files (`index.html`, `server.mjs`) run on any device with Node.js 18+ as well
+(`node server.mjs` on a laptop); this folder only adds the Pi's Wi-Fi, auto-start and station.
 
 ## What you need
 
-* Raspberry Pi 3 Model B (or newer), power supply, micro SD card (8 GB or more; **it will be erased**).
-* For the station: an HDMI screen, a USB keyboard and mouse.
-* The router of the party. A network cable from the Pi to the router is the most reliable.
+* Raspberry Pi 3 Model B (or newer), power supply, micro SD card (8 GB or more, it is erased).
+* For the station: an HDMI screen, a USB keyboard and mouse. (Recommended for the first setup anyway.)
+* Optional: a network cable to a router (internet for guests, and the organizer's laptop can
+  stay on its normal Wi-Fi).
 
-## 1. Put Raspberry Pi OS on the SD card (on your computer)
+## 1. The SD card
 
-1. Install **Raspberry Pi Imager** (Linux: `sudo apt install rpi-imager`; or from raspberrypi.com).
-2. *Device:* Raspberry Pi 3. *OS:* **Raspberry Pi OS (32-bit)** (with desktop; the 32-bit version needs less memory on the Pi 3's 1 GB).
-   Use *Raspberry Pi OS Lite* instead if you don't want the station on a screen.
-3. *Storage:* the micro SD card. Double-check it is the card and not another drive.
-4. *Edit settings* (OS customisation): hostname `kartcup`, a user name and password of your choice,
-   your Wi-Fi (only if you can't use a cable), your time zone and keyboard layout. Enable SSH if you
-   want to install from your computer.
-5. Write the card. Afterwards take it out and put it back in: a drive called **bootfs** appears.
-6. Copy the whole **`kart-cup-server`** folder (from `dist/` after `npm run package:server`) onto **bootfs**.
+Either use **Raspberry Pi Imager** (*Device:* Raspberry Pi 3, *OS:* Raspberry Pi OS (32-bit)
+with desktop, optionally *Edit settings* for user, keyboard and time zone), or write the
+image directly. Then copy the **`kart-cup-server`** folder onto the card's **bootfs** drive.
 
-## 2. Install on the Pi
+## 2. First start and install (on the Pi, with screen and keyboard)
 
-1. Put the card in the Pi, connect the cable (or Wi-Fi), screen, keyboard and mouse, and switch it on.
-   The first start takes a few minutes.
-2. Open a terminal (or connect with `ssh <user>@kartcup.local`) and run:
+1. Put the card in the Pi, connect screen, keyboard, mouse (and the cable, if you have one), switch on.
+   The first start takes a few minutes; the Pi asks for country, user name, password and a
+   Wi-Fi to use for the installation (skip the Wi-Fi if the cable is connected).
+2. Open the terminal (black icon at the top) and type:
 
    ```bash
    sudo bash /boot/firmware/kart-cup-server/install.sh
    ```
 
-   Without a screen: `sudo bash /boot/firmware/kart-cup-server/install.sh --no-desk`.
-3. The installer prints the address, for example `http://192.168.178.50:8080`. The server now starts
-   by itself whenever the Pi is switched on. After the next login the station opens full screen;
-   start it any time with `kart-cup-desk`, leave it with **Alt+F4**.
+   It installs Node.js, sets the name `kartcup`, starts the server on port 80 and finally turns
+   the Pi's Wi-Fi into the **Kart Cup** Wi-Fi. At the end it shows the **Wi-Fi password**
+   (it is also printed on the TV and the station next to the QR code, and kept in
+   `/etc/kart-cup/env`).
+3. Log out and in (or restart): the sign-up station opens full screen. Leave it with **Alt+F4**,
+   open it again with `kart-cup-desk`.
 
-## 3. Give the Pi a fixed address
+Options: `--no-hotspot` uses the party router's network instead of the Pi's own Wi-Fi (then
+use `http://kartcup.local`); `--no-desk` skips the station.
 
-The QR code contains the Pi's address, so it should not change. In your router (e.g. a FRITZ!Box:
-*Home Network → Network → the Pi → "Always assign this IPv4 address"*) reserve the address the Pi has now.
+## 3. Test (5 minutes, do it before the party)
 
-## 4. Test with your phone (2 minutes, do it before the party)
-
-1. On the laptop, open the Pi's address (e.g. `http://192.168.178.50:8080`), create a test tournament,
-   go to **Players → Phone sign-up → Start phone sign-up**.
-2. Scan the QR code with your phone (on the same Wi-Fi). Sign up "Test". Within two seconds "Test"
-   appears on the laptop.
-3. On the Pi's screen, the station shows the same form and QR code. Sign up "Test 2" with the keyboard.
+1. Organizer's laptop: join the **Kart Cup** Wi-Fi (password from step 2) and open
+   **http://kartcup.lan**. (With a router cable you can also stay on your normal Wi-Fi and open
+   **http://kartcup.local**.)
+2. Create a test tournament. *Home → Phone sign-up → Start phone sign-up*.
+3. Phone: scan the **left** QR code with the camera → "Join Kart Cup?" → join. The sign-up page
+   opens by itself (iPhone: a sheet; Android: tap the "Sign in to network" message). Sign up "Test".
+4. Within two seconds "Test" appears on the laptop. On the Pi's screen the station shows the same QR codes.
 
 ## On the party day
 
-* Switch on the Pi (and its screen). Open the Pi's address on the organizer's laptop.
-* Players → **Start phone sign-up**. The big screen shows the QR code while registration is open.
-* Guests' phones must be on the **same network** as the Pi. A separate guest Wi-Fi often blocks this
-  ("client isolation"): use the main Wi-Fi or a cheap travel router for the party.
-* The tournament lives in the organizer's browser (as before): export a backup now and then.
+* Switch on the Pi (and its screen). Organizer: laptop on the Kart Cup Wi-Fi, open **http://kartcup.lan**.
+* *Start phone sign-up*; the TV shows the QR codes while registration is open.
+* When everyone is there: **Start racing** (heat size, format, Grand Prix or VS races).
+* The tournament lives in the organizer's browser as before: export a backup now and then.
 
 ## If something doesn't work
 
 | Problem | Check |
 |---|---|
-| The phone says "No connection to the Kart Cup server" | Phone on the same Wi-Fi? Guest Wi-Fi with client isolation? Does `http://<Pi address>:8080` open on the phone? |
-| The laptop says "Server not reachable" | Is the Pi on? `systemctl status kart-cup` on the Pi. |
-| The QR code shows a wrong address | Reserve the address in the router, or set it fixed: `sudo systemctl edit kart-cup` and add `Environment=PUBLIC_URL=http://192.168.178.50:8080` |
-| The station doesn't open after login | Run `kart-cup-desk` in a terminal; install Chromium if missing: `sudo apt install chromium-browser` |
+| The phone joins the Wi-Fi but no page opens | Open **http://kartcup.lan** in the phone's browser, or scan the right (small) QR code. |
+| "Kart Cup" Wi-Fi doesn't appear | `nmcli connection up kartcup-ap` on the Pi; `journalctl -u NetworkManager -n 50` |
+| The laptop says "Server not reachable" | Laptop on the Kart Cup Wi-Fi? `systemctl status kart-cup` on the Pi. |
+| Guests have no internet on the Kart Cup Wi-Fi | Only with a router cable on the Pi. Without, it's sign-up only (phones may switch back to mobile data). |
+| The station doesn't open after login | Run `kart-cup-desk` in a terminal; install Chromium if missing: `sudo apt install chromium` |
 | Logs | `journalctl -u kart-cup -n 50` (the server logs no IP addresses) |
+
+To go back to the Pi's normal Wi-Fi: `sudo nmcli connection delete kartcup-ap`.
 
 ## Update to a new version
 
-Copy the new `kart-cup-server` folder to the Pi and run `sudo bash install.sh` in it again.
-Running sign-up sessions are kept (`/var/lib/kart-cup`).
+Copy the new `kart-cup-server` folder onto the Pi (USB stick or the SD card's bootfs) and run
+`sudo bash install.sh` in it again. The Wi-Fi password stays the same.

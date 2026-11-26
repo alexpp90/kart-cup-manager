@@ -3516,7 +3516,7 @@ body.hide-cursor * {
   width: 13vw;
   height: 13vw;
 }
-.big-join-qr div {
+.big-join-qr > div:not(.join-qrs) {
   display: flex;
   flex-direction: column;
   gap: 0.6vh;
@@ -3537,4 +3537,142 @@ body.hide-cursor * {
 .big-join-small strong {
   font-family: var(--font-display);
   font-size: 1.6em;
+}
+/* Sign-up first, Start racing, race setup */
+.setup-simple {
+  display: block;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.start-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .start-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.start-count {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin: 0;
+}
+.race-chip {
+  background: var(--gold-pale);
+}
+.race-setup {
+  border: 2px dashed var(--silver);
+  border-radius: 14px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+.race-setup summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.race-setup[open] summary {
+  margin-bottom: 10px;
+}
+.round-race {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 6px 0;
+}
+.big-race-chip {
+  margin: 0.4vh 0 1vh;
+  font-size: 1.2em;
+}
+.choices:has(input[name$='-cc']) {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.choices:has(input[name$='-cc']) .choice {
+  padding: 8px 4px;
+  align-items: center;
+}
+/* Join QR codes (Wi-Fi + link) */
+.join-qrs {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.join-qr {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  max-width: 260px;
+}
+.join-qr figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+}
+.join-qr-link figcaption b {
+  font-size: 1rem;
+  word-break: break-all;
+}
+.join-qrs-small {
+  flex-direction: column;
+  align-items: center;
+}
+.join-qrs-big {
+  gap: 3vw;
+  align-items: center;
+  flex-wrap: nowrap;
+  -webkit-text-stroke: 0;
+  color: var(--navy);
+}
+.join-qrs-big .join-qr {
+  max-width: none;
+  background: rgba(255, 255, 255, 0.9);
+  border: 3px solid var(--navy);
+  border-radius: 1.2vw;
+  padding: 1.2vh 1vw;
+}
+.join-qrs-big .join-qr-wifi .qr {
+  width: 15vw;
+  height: 15vw;
+}
+.join-qrs-big .join-qr-link .qr {
+  width: 8vw;
+  height: 8vw;
+}
+.join-qrs-big figcaption {
+  font-family: var(--font-body);
+  font-size: 0.45em;
+  max-width: 22vw;
+}
+.join-qrs-big figcaption b {
+  font-family: var(--font-display);
+  font-size: 1.5em;
+}
+.wifi-pass {
+  font-family: ui-monospace, 'DejaVu Sans Mono', monospace;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.home-side .phone-card {
+  margin: 0;
+}
+.home-side .phone-live {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.join-qrs-big .wifi-pass {
+  word-break: normal;
+  overflow-wrap: anywhere;
 }

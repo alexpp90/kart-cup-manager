@@ -1,30 +1,42 @@
 #!/bin/bash
-# Kart Cup server on a Raspberry Pi (tested design for a Pi 3 Model B with
-# Raspberry Pi OS Bookworm). Run on the Pi from this folder:
-#   sudo bash install.sh            server + sign-up station on the Pi's screen
-#   sudo bash install.sh --no-desk  server only (no screen attached)
-# What it does: installs Node.js if missing, copies index.html and server.mjs
-# to /opt/kart-cup, starts the server now and at every boot (port 8080), and
-# opens the sign-up station full screen when the desktop starts.
+# Kart Cup server on a Raspberry Pi (made for a Pi 3 Model B with Raspberry Pi
+# OS "trixie" or "bookworm", 32-bit, with desktop). Run on the Pi from this folder:
+#   sudo bash install.sh                 own "Kart Cup" Wi-Fi + server + sign-up station
+#   sudo bash install.sh --no-hotspot    use the party router's network instead
+#   sudo bash install.sh --no-desk       no station on the Pi's screen
+# What it does:
+#   * installs Node.js if missing, copies index.html and server.mjs to /opt/kart-cup,
+#   * runs the server at every boot on port 80, reached by name: http://kartcup.lan
+#     on the Kart Cup Wi-Fi, http://kartcup.local through a router,
+#   * opens the Pi's own Wi-Fi "Kart Cup" (WPA2, generated password): phones join it
+#     with one QR code and the sign-up page opens by itself; with a cable to a router
+#     they keep their internet,
+#   * opens the sign-up station full screen when the desktop starts.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESK=1
-[ "${1:-}" = "--no-desk" ] && DESK=0
-PORT="${PORT:-8080}"
+HOTSPOT=1
+for arg in "$@"; do
+  case "$arg" in
+    --no-desk) DESK=0 ;;
+    --no-hotspot) HOTSPOT=0 ;;
+    *) echo "Unknown option $arg" >&2; exit 1 ;;
+  esac
+done
+SSID="${KART_SSID:-Kart Cup}"
+NAME="kartcup"
+AP_IP="10.42.0.1"
 
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Please run with sudo: sudo bash install.sh" >&2
-  exit 1
-fi
+fail() { echo "ERROR: $*" >&2; exit 1; }
+[ "$(id -u)" -eq 0 ] || fail "Please run with sudo: sudo bash install.sh"
 USER_NAME="${SUDO_USER:-}"
 if [ -z "$USER_NAME" ] || [ "$USER_NAME" = "root" ]; then
   USER_NAME="$(getent passwd 1000 | cut -d: -f1)"
 fi
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
-
-for f in index.html server.mjs kart-cup.service; do
-  [ -f "$HERE/$f" ] || { echo "Missing $f next to install.sh" >&2; exit 1; }
+for f in index.html server.mjs kart-cup.service kart-cup-desk kart-cup-desk.desktop kart-cup-dns.conf; do
+  [ -f "$HERE/$f" ] || fail "Missing $f next to install.sh"
 done
 
 echo "== Node.js"
@@ -33,41 +45,83 @@ if ! command -v node >/dev/null 2>&1; then
   apt-get install -y nodejs
 fi
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-if [ "$NODE_MAJOR" -lt 18 ]; then
-  echo "Node.js $NODE_MAJOR is too old (18 or newer needed)." >&2
-  exit 1
-fi
+[ "$NODE_MAJOR" -ge 18 ] || fail "Node.js $NODE_MAJOR is too old (18 or newer needed)."
 echo "Node.js $(node --version)"
+
+echo "== Name: $NAME"
+if [ "$(hostname)" != "$NAME" ]; then
+  hostnamectl set-hostname "$NAME"
+  if grep -q '^127\.0\.1\.1' /etc/hosts; then sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$NAME/" /etc/hosts; else printf '127.0.1.1\t%s\n' "$NAME" >> /etc/hosts; fi
+fi
 
 echo "== Files"
 install -d -m 755 /opt/kart-cup
 install -m 644 "$HERE/index.html" "$HERE/server.mjs" /opt/kart-cup/
 install -d -m 750 -o "$USER_NAME" -g "$USER_NAME" /var/lib/kart-cup
 
+echo "== Settings (/etc/kart-cup/env)"
+install -d -m 755 /etc/kart-cup
+ENV_FILE=/etc/kart-cup/env
+PASS=""
+[ -f "$ENV_FILE" ] && PASS="$(sed -n 's/^WIFI_PASSWORD="\(.*\)"$/\1/p' "$ENV_FILE")"
+if [ -z "$PASS" ]; then
+  # 12 characters without look-alikes (no 0/O, 1/l/I), easy to type on a laptop.
+  PASS="$(node -e 'const a="abcdefghjkmnpqrstuvwxyz23456789";const b=require("crypto").randomBytes(12);console.log([...b].map(x=>a[x%a.length]).join(""))')"
+fi
+{
+  echo "PORT=80"
+  echo "DATA_DIR=/var/lib/kart-cup"
+  if [ "$HOTSPOT" = "1" ]; then
+    echo "HOST_NAME=$NAME.lan"
+    echo "CAPTIVE=1"
+    echo "WIFI_SSID=\"$SSID\""
+    echo "WIFI_PASSWORD=\"$PASS\""
+  else
+    echo "HOST_NAME=$NAME.local"
+  fi
+} > "$ENV_FILE"
+chmod 640 "$ENV_FILE"
+
 echo "== Service"
-sed -e "s/@USER@/$USER_NAME/" -e "s/@PORT@/$PORT/" "$HERE/kart-cup.service" > /etc/systemd/system/kart-cup.service
+sed -e "s/@USER@/$USER_NAME/" "$HERE/kart-cup.service" > /etc/systemd/system/kart-cup.service
 systemctl daemon-reload
-systemctl enable --now kart-cup.service
+systemctl enable kart-cup.service
 systemctl restart kart-cup.service
 
 if [ "$DESK" = "1" ]; then
   echo "== Sign-up station on this screen"
   install -m 755 "$HERE/kart-cup-desk" /usr/local/bin/kart-cup-desk
-  sed -i "s/@PORT@/$PORT/" /usr/local/bin/kart-cup-desk
   install -d -o "$USER_NAME" -g "$USER_NAME" "$USER_HOME/.config/autostart"
   install -m 644 -o "$USER_NAME" -g "$USER_NAME" "$HERE/kart-cup-desk.desktop" "$USER_HOME/.config/autostart/kart-cup-desk.desktop"
 fi
 
-sleep 2
-echo
-if systemctl is-active --quiet kart-cup.service; then
-  echo "Kart Cup server is running."
-  for ip in $(hostname -I); do
-    case "$ip" in *:*) ;; *) echo "  Open on the organizer's laptop:  http://$ip:$PORT" ;; esac
-  done
-  echo "  Sign-up station on this Pi:      kart-cup-desk   (starts by itself after the next login)"
-  echo "  Status / log:                     systemctl status kart-cup   /   journalctl -u kart-cup"
-else
-  echo "The service did not start. See: journalctl -u kart-cup -n 50" >&2
-  exit 1
+if [ "$HOTSPOT" = "1" ]; then
+  echo "== Wi-Fi \"$SSID\""
+  command -v nmcli >/dev/null 2>&1 || fail "NetworkManager (nmcli) is needed for the Wi-Fi. Use --no-hotspot to skip it."
+  WIFI_DEV="$(nmcli -t -f DEVICE,TYPE device | awk -F: '$2=="wifi"{print $1; exit}')"
+  [ -n "$WIFI_DEV" ] || fail "No Wi-Fi device found. Use --no-hotspot to skip the Wi-Fi."
+  install -d /etc/NetworkManager/dnsmasq-shared.d
+  install -m 644 "$HERE/kart-cup-dns.conf" /etc/NetworkManager/dnsmasq-shared.d/kart-cup.conf
+  nmcli connection delete kartcup-ap >/dev/null 2>&1 || true
+  nmcli connection add type wifi ifname "$WIFI_DEV" con-name kartcup-ap autoconnect yes \
+    connection.autoconnect-priority 100 ssid "$SSID" \
+    802-11-wireless.mode ap 802-11-wireless.band bg 802-11-wireless.channel 6 \
+    ipv4.method shared ipv4.addresses "$AP_IP/24" ipv6.method disabled \
+    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASS" wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp >/dev/null
+  echo "Switching $WIFI_DEV to the Kart Cup Wi-Fi now. If you are connected to this Pi over Wi-Fi (SSH), that connection ends here;"
+  echo "the Pi's screen or a network cable keep working."
+  nmcli connection up kartcup-ap >/dev/null || fail "The Wi-Fi did not start. See: journalctl -u NetworkManager -n 50"
 fi
+
+sleep 2
+systemctl is-active --quiet kart-cup.service || fail "The server did not start. See: journalctl -u kart-cup -n 50"
+echo
+echo "Kart Cup server is running."
+if [ "$HOTSPOT" = "1" ]; then
+  echo "  Wi-Fi:      $SSID"
+  echo "  Password:   $PASS   (also shown as a QR code on the TV and the station)"
+  echo "  App:        http://$NAME.lan   (on the Kart Cup Wi-Fi)"
+fi
+echo "  Through a router cable: http://$NAME.local"
+[ "$DESK" = "1" ] && echo "  Sign-up station on this Pi: starts after the next login, or run: kart-cup-desk"
+echo "  Status / log: systemctl status kart-cup   /   journalctl -u kart-cup"

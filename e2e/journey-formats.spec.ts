@@ -1,7 +1,7 @@
 // The v2 formats through the real UI: the planner, a knockout night with lucky
 // losers, a Last Chance heat, a league, and the measured time on Home and the TV.
 import { test as base, type BrowserContext, type Page } from '@playwright/test';
-import { expect, httpUrl as url, NAMES, permuter, playQueue, quickAdd, setupTournament, shot, state, watchErrors } from './helpers';
+import { expect, httpUrl as url, NAMES, permuter, playQueue, quickAdd, setupTournament, shot, state, watchErrors, openRoundPreview } from './helpers';
 
 const test = base;
 test.describe.configure({ mode: 'serial' });
@@ -30,38 +30,51 @@ async function fresh() {
 const sizes = (r: { heats: { playerIds: string[] }[] }) => r.heats.map((h) => h.playerIds.length);
 
 test.describe('[journey] formats', () => {
-  test('[REQ-PLAN-002][REQ-PLAN-003][REQ-FMT-002] the planner shows the plan, warns over 3 hours and offers shorter variants', async () => {
+  test('[REQ-UI-031][REQ-PLAN-003][REQ-FMT-002] Start racing suggests the format from the real players, plans the night, warns over 3 hours and offers shorter variants', async () => {
     await page.goto(url());
     await page.click('[data-testid=new-tournament]');
-    await page.click('[data-testid=wizard-next]');
-    await page.locator('[data-testid=expected-players]').fill('6');
+    await page.fill('[data-testid=setup-name]', 'Plan Night');
+    await page.click('[data-testid=create-tournament]');
+    await page.goto(url('settings'));
+    await page.fill('[data-testid=start-time]', '19:00');
+    await page.click('[data-testid=save-settings]');
+    await quickAdd(page, url, NAMES.slice(0, 6));
+    await page.goto(url());
+    await page.click('[data-testid=generate-round]');
     // Everyone fits into one heat of 8: league is suggested and chosen.
     await expect(page.locator('[data-testid=format-league]')).toContainText('suggested');
     await expect(page.locator('[data-testid=format-league]')).toHaveClass(/choice-on/);
-    await page.locator('[data-testid=expected-players]').fill('30');
+    await page.keyboard.press('Escape');
+    await quickAdd(page, url, Array.from({ length: 24 }, (_, i) => `Racer ${i + 1}`));
+    await page.goto(url());
+    await page.click('[data-testid=generate-round]');
+    await expect(page.locator('[data-testid=start-count]')).toContainText('30 players');
     await expect(page.locator('[data-testid=format-knockout]')).toHaveClass(/choice-on/);
     await page.click('[data-testid=heat-size-4]');
-    await page.fill('[data-testid=start-time]', '19:00');
-    await expect(page.locator('[data-testid=plan-total]')).toHaveText('4 h 15 min');
-    await expect(page.locator('[data-testid=plan-diagram] .plan-col')).toHaveCount(4);
-    await expect(page.locator('[data-testid=plan-breakdown]')).toContainText('ends ≈ 23:15');
-    await expect(page.locator('[data-testid=plan-warning]')).toContainText('more than 3 hours');
+    const plan = page.locator('.modal .plan-card');
+    await expect(plan.locator('[data-testid=plan-total]')).toHaveText('4 h 15 min');
+    await expect(plan.locator('[data-testid=plan-diagram] .plan-col')).toHaveCount(4);
+    await expect(plan.locator('[data-testid=plan-breakdown]')).toContainText('ends ≈ 23:15');
+    await expect(plan.locator('[data-testid=plan-warning]')).toContainText('more than 3 hours');
     await shot(page, OUT, 'planner-warning');
-    await page.click('[data-testid=use-alt-0]');
-    await expect(page.locator('[data-testid=plan-total]')).toHaveText('3 h 7 min');
+    await plan.locator('[data-testid=use-alt-0]').click();
+    await expect(plan.locator('[data-testid=plan-total]')).toHaveText('3 h 7 min');
+    await page.keyboard.press('Escape');
     // German labels.
     await page.click('button:has-text("DE")');
-    await expect(page.locator('[data-testid=plan-breakdown]')).toContainText('Ende ≈');
+    await page.click('[data-testid=generate-round]');
+    await expect(page.locator('.modal [data-testid=plan-breakdown]')).toContainText('Ende ≈');
     await shot(page, OUT, 'planner-de');
+    await page.keyboard.press('Escape');
     await page.click('button:has-text("EN")');
   });
 
   test('[REQ-FMT-004][REQ-FMT-005][REQ-FMT-008][REQ-FMT-014][REQ-UI-029] a knockout night: draw, top 4 go on, lucky losers fill the semis, final, podium', async () => {
     await fresh();
-    await setupTournament(page, url, { name: 'KO Night', format: 'knockout', max: 8, players: 20, entry: 'totals' });
+    await setupTournament(page, url, { name: 'KO Night', format: 'knockout', max: 8, entry: 'totals' });
     await quickAdd(page, url, NAMES.slice(0, 20));
     await page.goto(url());
-    await page.click('[data-testid=generate-round]');
+    await openRoundPreview(page);
     await expect(page.locator('[data-testid=regenerate]')).toBeVisible();
     await page.click('[data-testid=regenerate]');
     // Every player in the preview has a controller number 1..n per heat.
@@ -76,7 +89,7 @@ test.describe('[journey] formats', () => {
     expect(await playQueue(page, url, perm)).toBe(3);
     // Round 2 is seeded: no redraw, the lucky losers carry a clover.
     await page.goto(url());
-    await page.click('[data-testid=generate-round]');
+    await openRoundPreview(page);
     await expect(page.locator('[data-testid=regenerate]')).toHaveCount(0);
     await expect(page.locator('.preview-grid .lucky-mark')).toHaveCount(3);
     await page.click('[data-testid=save-round]');
@@ -87,7 +100,7 @@ test.describe('[journey] formats', () => {
     await shot(page, OUT, 'knockout-round-2');
     expect(await playQueue(page, url, perm)).toBe(2);
     await page.goto(url());
-    await page.click('[data-testid=generate-round]');
+    await openRoundPreview(page);
     await expect(page.locator('.modal')).toContainText('The final');
     await page.click('[data-testid=save-round]');
     expect(await playQueue(page, url, perm)).toBe(1);
@@ -119,17 +132,13 @@ test.describe('[journey] formats', () => {
     await shot(page, OUT, 'badges-marks');
   });
 
-  test('[REQ-TIME-002][REQ-PLAN-004] Home and the big screen show the time per heat, heats left and the end time; Home compares with the setup plan', async () => {
+  test('[REQ-TIME-002] Home and the big screen show the time per heat, heats left and the end time', async () => {
     await fresh();
-    await setupTournament(page, url, { name: 'Clock Cup', format: 'knockout', max: 4, players: 12, entry: 'totals' });
+    await setupTournament(page, url, { name: 'Clock Cup', format: 'knockout', max: 4, entry: 'totals' });
     await quickAdd(page, url, NAMES.slice(0, 6));
-    await page.goto(url());
-    await expect(page.locator('[data-testid=plan-diff]')).toContainText('planned for 12, now 6 players: −51 min');
     await quickAdd(page, url, NAMES.slice(6, 12));
     await page.goto(url());
-    await expect(page.locator('[data-testid=plan-diff]')).toHaveCount(0);
-    await page.goto(url());
-    await page.click('[data-testid=generate-round]');
+    await openRoundPreview(page);
     await page.click('[data-testid=save-round]');
     const line = page.locator('[data-testid=time-line]');
     await expect(line).toContainText('(estimate)');
@@ -149,10 +158,10 @@ test.describe('[journey] formats', () => {
 
   test('[REQ-FMT-007] knockout with Last Chance: the extra heat is queued after the round and decides the free place', async () => {
     await fresh();
-    await setupTournament(page, url, { name: 'LC Cup', format: 'knockout', max: 4, players: 10, entry: 'totals', fill: 'last-chance' });
+    await setupTournament(page, url, { name: 'LC Cup', format: 'knockout', max: 4, entry: 'totals', fill: 'last-chance' });
     await quickAdd(page, url, NAMES.slice(0, 10));
     await page.goto(url());
-    await page.click('[data-testid=generate-round]');
+    await openRoundPreview(page);
     await page.click('[data-testid=save-round]');
     expect(sizes((await state(page)).rounds[0])).toEqual([4, 3, 3]);
     expect(await playQueue(page, url, perm)).toBe(4);
@@ -166,11 +175,11 @@ test.describe('[journey] formats', () => {
 
   test('[REQ-FMT-003][REQ-FMT-011] a league with final-order entry: everyone races every cup, total points decide', async () => {
     await fresh();
-    await setupTournament(page, url, { name: 'League Night', format: 'league', max: 8, players: 5, entry: 'ranking' });
+    await setupTournament(page, url, { name: 'League Night', format: 'league', max: 8, entry: 'ranking' });
     await quickAdd(page, url, NAMES.slice(0, 5));
     for (let cup = 1; cup <= 3; cup++) {
       await page.goto(url());
-      await page.click('[data-testid=generate-round]');
+      await openRoundPreview(page);
       await expect(page.locator('.modal')).toContainText(`Cup ${cup}`);
       await page.click('[data-testid=save-round]');
       expect(await playQueue(page, url, perm)).toBe(1);

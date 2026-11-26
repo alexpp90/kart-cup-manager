@@ -203,7 +203,7 @@ export function FormatFields({ s, patch, players, locked, onFormatPicked }: { s:
           name="heat-size"
           value={s.heatSize}
           disabled={locked}
-          onChange={(v) => patch({ heatSize: v, ...(s.format === 'classic' && v < 3 ? { format: suggestFormat(players, v) } : {}) })}
+          onChange={(v) => patch({ heatSize: v, ...(s.formatAuto || (s.format === 'classic' && v < 3) ? { format: suggestFormat(players, v) } : {}) })}
           options={HEAT_SIZES.map((n) => ({ value: n, label: <b className="big-num">{n}</b> }))}
         />
         <small>{locked ? t('settings.lockedMax') : t('setup.heatSizeHint')}</small>
@@ -216,7 +216,7 @@ export function FormatFields({ s, patch, players, locked, onFormatPicked }: { s:
           disabled={locked}
           onChange={(v) => {
             onFormatPicked?.();
-            patch({ format: v });
+            patch({ format: v, formatAuto: false });
           }}
           options={formats
             .filter((f) => f !== 'classic' || s.heatSize >= 3)
@@ -334,11 +334,6 @@ export function ScoringFields({ s, patch }: { s: Settings; patch: Patch }) {
             { value: 'per-race', label: t('setup.entryPerRace'), hint: t('setup.entryPerRaceHint'), icon: '👆' },
           ]}
         />
-      </div>
-      <div className="field">
-        <span>{t('setup.races')}</span>
-        <Stepper value={s.racesPerHeat} min={1} max={12} onChange={(v) => patch({ racesPerHeat: v })} label={t('setup.races')} />
-        <small>{t('setup.racesHint')}</small>
       </div>
       <fieldset className="points-table is-active">
         <legend>{t('setup.pointsTable')}</legend>

@@ -14,8 +14,8 @@ export const DEMO_NAMES = [
 ];
 
 /** Simulated finishing orders: each player has a skill, each race adds noise. */
-export function simulateResult(heat: Heat, settings: Settings, skill: (id: string) => number, rng: Rng): HeatResult {
-  const races = Array.from({ length: settings.racesPerHeat }, () =>
+export function simulateResult(heat: Heat, settings: Settings, skill: (id: string) => number, rng: Rng, raceCount = settings.race.races): HeatResult {
+  const races = Array.from({ length: raceCount }, () =>
     heat.playerIds
       .map((id) => ({ id, v: skill(id) + rng() * 6 }))
       .sort((a, b) => b.v - a.v)

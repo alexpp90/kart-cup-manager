@@ -43,7 +43,7 @@ export function App() {
 
   const [page, arg] = route;
   if (page === 'big') return <BigScreen />;
-  if (page === 's' && arg) return <PhoneJoin code={arg.toUpperCase()} />;
+  if (page === 's') return <PhoneJoin code={(arg ?? '').toUpperCase()} />;
   if (page === 'desk') return <DeskSignup />;
   if (recovery) {
     return (

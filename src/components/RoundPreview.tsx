@@ -6,6 +6,8 @@ import { go } from '../lib/router';
 import { sound } from '../lib/sound';
 import { newId, tNow, useApp, useT } from '../store/store';
 import { SuddenDeathCard } from './SuddenDeath';
+import { RaceChip, RaceFields } from './RaceFields';
+import type { RaceSetup } from '../engine/types';
 import { Clover } from './Icons';
 import { toast } from '../store/ui';
 import { Avatar } from './Avatar';
@@ -13,12 +15,13 @@ import { Modal } from './Dialogs';
 import { IconShuffle } from './Icons';
 
 /** Preview of the next round with Regenerate / Save. Nothing is stored until Save. */
-export function RoundPreview({ onClose }: { onClose: () => void }) {
+export function RoundPreview({ onClose, race: initialRace }: { onClose: () => void; race?: RaceSetup }) {
   const t = useT();
   const tour = useApp((s) => s.t)!;
   const dispatch = useApp((s) => s.dispatch);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 2 ** 31));
-  const preview = useMemo(() => previewRound(tour, seed, newId, Date.now()), [tour, seed]);
+  const [race, setRace] = useState<RaceSetup>(() => initialRace ?? tour.settings.race);
+  const preview = useMemo(() => previewRound(tour, seed, newId, Date.now(), race), [tour, seed, race]);
   const byId = new Map(tour.players.map((p) => [p.id, p]));
   const n = tour.rounds.length + 1;
   const format = tour.settings.format;
@@ -44,7 +47,7 @@ export function RoundPreview({ onClose }: { onClose: () => void }) {
   }
   const save = () => {
     const label = format === 'league' ? tNow('action.cupCreated', { n }) : tNow('action.round', { n });
-    dispatch({ type: 'generateRound', seed });
+    dispatch({ type: 'generateRound', seed, race });
     sound.fanfare();
     toast(label, 'success');
     onClose();
@@ -72,6 +75,12 @@ export function RoundPreview({ onClose }: { onClose: () => void }) {
       }
     >
       <p className="muted">{format === 'classic' ? t('rounds.previewBody') : format === 'league' ? t('rounds.previewLeague') : tour.rounds.length ? t('rounds.previewSeeded', { prev: roundLabel(t, tour, tour.rounds.length - 1) }) : t('rounds.previewDraw')}</p>
+      <details className="race-setup" open={!initialRace} data-testid="race-setup">
+        <summary>
+          <RaceChip race={preview.round.race ?? race} /> <span className="muted">{t('rounds.raceChange')}</span>
+        </summary>
+        <RaceFields race={race} onChange={setRace} name="preview-race" />
+      </details>
       <p className="muted">{t('seat.hint')}</p>
       <div className="preview-stats">
         <span className="chip">{t('common.heats', { n: preview.round.heats.length })}</span>

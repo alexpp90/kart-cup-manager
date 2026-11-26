@@ -4,7 +4,7 @@
 // names are taken and whether registration is open.
 import { create } from 'zustand';
 import { registrationOpen } from '../engine/tournament';
-import { checkSignUp } from '../shared/signup';
+import { checkSignUp, wifiQrText } from '../shared/signup';
 import { tNow, useApp } from '../store/store';
 import { toast } from '../store/ui';
 
@@ -28,12 +28,45 @@ export interface PhoneSession {
 
 export type PhoneStatus = 'off' | 'starting' | 'live' | 'offline' | 'ended';
 
+export interface ServerInfo {
+  /** The server's name for guests (e.g. kartcup.lan), when it has one. */
+  host: string | null;
+  /** The Pi's own Wi-Fi, when it runs one. */
+  wifi: { ssid: string; password: string } | null;
+  captive: boolean;
+}
+
 interface PhoneState {
   status: PhoneStatus;
   session: PhoneSession | null;
+  info: ServerInfo | null;
 }
 
-export const usePhone = create<PhoneState>(() => ({ status: 'off', session: readSession() }));
+export const usePhone = create<PhoneState>(() => ({ status: 'off', session: readSession(), info: null }));
+
+/** What the server tells about itself (name, Wi-Fi). Cached in the store. */
+export async function loadServerInfo(): Promise<ServerInfo | null> {
+  if (!serverMode()) return null;
+  try {
+    const r = await api('/api/info');
+    if (r.status !== 200) return null;
+    const w = r.body.wifi as { ssid?: unknown; password?: unknown } | null;
+    const info: ServerInfo = {
+      host: typeof r.body.host === 'string' ? r.body.host : null,
+      wifi: w && typeof w.ssid === 'string' ? { ssid: w.ssid, password: typeof w.password === 'string' ? w.password : '' } : null,
+      captive: r.body.captive === true,
+    };
+    usePhone.setState({ info });
+    return info;
+  } catch {
+    return null;
+  }
+}
+
+/** The QR text that joins the server's Wi-Fi, or null. */
+export function wifiQr(info: ServerInfo | null): string | null {
+  return info?.wifi ? wifiQrText(info.wifi.ssid, info.wifi.password) : null;
+}
 
 function readSession(): PhoneSession | null {
   try {
@@ -88,7 +121,9 @@ export async function startPhoneSignUp(): Promise<boolean> {
   try {
     const r = await api('/api/sessions', { method: 'POST', body: JSON.stringify({ hours: 24 }) });
     if (r.status !== 201) throw new Error(String(r.body.error));
-    const base = isLocalHost(location.hostname) ? pickBase((r.body.bases as string[]) ?? []) : location.origin;
+    // A named server (the Pi's own Wi-Fi) is always reached by its name; otherwise the address in use.
+    const bases = (r.body.bases as string[]) ?? [];
+    const base = r.body.host ? (bases[0] ?? location.origin) : isLocalHost(location.hostname) ? pickBase(bases) : location.origin;
     writeSession({ code: r.body.code as string, adminKey: r.body.adminKey as string, tournamentId: t.id, lastSeq: 0, base });
     usePhone.setState({ status: 'live' });
     lastState = '';
@@ -180,6 +215,7 @@ async function tick(): Promise<void> {
 /** Run the pull loop in organizer windows (not on the TV, phones or the station). */
 export function startPhoneSync(): () => void {
   if (!serverMode()) return () => {};
+  void loadServerInfo();
   if (readSession()) usePhone.setState({ status: 'starting' });
   const id = window.setInterval(() => void tick(), POLL_MS);
   void tick();
@@ -213,12 +249,15 @@ export async function signUp(code: string, input: { name: string; tag: string; c
 }
 
 /** The station on the server's own screen: the newest session, if any. */
-export async function localSession(): Promise<{ code: string; base: string } | null | 'not-local'> {
+export async function localSession(): Promise<{ code: string; base: string; wifi: { qr: string; ssid: string; password: string } | null } | null | 'not-local'> {
   try {
     const r = await api('/api/local/session');
     if (r.status === 403) return 'not-local';
     if (r.status !== 200) return null;
-    return { code: String(r.body.code), base: pickBase((r.body.bases as string[]) ?? []) };
+    const w = r.body.wifi as { ssid?: unknown; password?: unknown } | null;
+    const pw = w && typeof w.password === 'string' ? w.password : '';
+    const wifi = w && typeof w.ssid === 'string' ? { qr: wifiQrText(w.ssid, pw), ssid: w.ssid, password: pw } : null;
+    return { code: String(r.body.code), base: pickBase((r.body.bases as string[]) ?? []), wifi };
   } catch {
     return null;
   }

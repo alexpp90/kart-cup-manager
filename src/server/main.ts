@@ -2,7 +2,10 @@
 // Start: `node server.mjs` next to index.html. Settings by environment:
 //   PORT (8080), HOST (0.0.0.0), DATA_DIR (./kart-cup-data next to server.mjs),
 //   PUBLIC_URL (fixed base for join links, e.g. http://192.168.178.50:8080),
-//   MAX_SESSION_HOURS (72), MAX_SESSIONS (20).
+//   MAX_SESSION_HOURS (72), MAX_SESSIONS (20),
+//   HOST_NAME (e.g. kartcup.lan: join links use it), WIFI_SSID + WIFI_PASSWORD
+//   (the Pi's own Wi-Fi, shown as a QR code), CAPTIVE=1 (send phones' connection
+//   checks and other hosts to the sign-up page).
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
@@ -37,6 +40,9 @@ const app = createApp({
   maxSessionHours: Number(process.env.MAX_SESSION_HOURS ?? 72),
   maxSessions: Number(process.env.MAX_SESSIONS ?? 20),
   addresses,
+  hostName: process.env.HOST_NAME || undefined,
+  wifi: process.env.WIFI_SSID ? { ssid: process.env.WIFI_SSID, password: process.env.WIFI_PASSWORD ?? '' } : null,
+  captive: process.env.CAPTIVE === '1',
 });
 
 const server = createServer((req, res) => {
@@ -52,6 +58,8 @@ server.listen(port, host, () => {
   const list = addresses();
   console.log(`Kart Cup server is running on port ${port}.`);
   console.log(`  On this device:  http://localhost:${port}`);
+  if (process.env.HOST_NAME) console.log(`  By name:         http://${process.env.HOST_NAME}${port === 80 ? '' : `:${port}`}`);
+  if (process.env.WIFI_SSID) console.log(`  Wi-Fi for phones: ${process.env.WIFI_SSID}${process.env.CAPTIVE === '1' ? ' (sign-up opens by itself)' : ''}`);
   for (const a of list) console.log(`  On the network:  ${a}`);
   if (!list.length) console.log('  (no network address found: is the device on the Wi-Fi or a cable?)');
 });

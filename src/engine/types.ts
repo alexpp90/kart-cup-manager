@@ -15,6 +15,15 @@ export const MAX_HEAT = 8;
 export type Format = 'classic' | 'knockout' | 'league';
 /** How a knockout round fills the next round beyond the top X of each heat. */
 export type FillMode = 'best' | 'last-chance' | 'off';
+/** How a round is raced on the console: a Grand Prix cup (4 races) or a number of VS races. */
+export type RaceKind = 'gp' | 'vs';
+export type EngineClass = '50' | '100' | '150' | '200' | 'mirror';
+export interface RaceSetup {
+  kind: RaceKind;
+  /** 4 for a Grand Prix; 1..32 for VS races. */
+  races: number;
+  cc: EngineClass;
+}
 /** 'totals': console cup totals · 'ranking': final cup order only · 'per-race': order after every race. */
 export type EntryMode = 'totals' | 'ranking' | 'per-race';
 export type TrackMode = 'none' | 'random-cup' | 'random-tracks' | 'pick';
@@ -24,8 +33,15 @@ export interface Settings {
   name: string;
   date: string; // YYYY-MM-DD
   format: Format;
+  /** The format follows the number of players (suggested) until the organizer picks one. */
+  formatAuto: boolean;
   heatSize: HeatSize;
+  /** Races per heat for heats outside rounds (classic finals) and old data; see `race`. */
   racesPerHeat: number;
+  /** Race setup for the next round to be drawn (each round keeps its own). */
+  race: RaceSetup;
+  /** People may still sign up after round 1 was drawn. */
+  lateSignups: boolean;
   /** Classic: number of qualifying rounds. */
   qualRounds: number;
   /** Points per race, index 0 = 1st place. Heats smaller than the table use its top. */
@@ -112,6 +128,8 @@ export interface Round {
   entrants?: string[];
   /** Knockout: Last Chance heat for the fill-up places, raced after the round's heats. */
   lastChance?: Heat;
+  /** How this round is raced (missing in old data: settings.racesPerHeat). */
+  race?: RaceSetup;
 }
 
 export interface StageConfig {
@@ -150,7 +168,7 @@ export interface SuddenDeath {
 export type Phase = 'registration' | 'qualifying' | 'finals' | 'podium';
 
 export interface Tournament {
-  version: 2;
+  version: 3;
   id: string;
   settings: Settings;
   players: Player[];

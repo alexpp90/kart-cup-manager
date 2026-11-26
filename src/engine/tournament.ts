@@ -13,7 +13,7 @@ import { advanceFor } from './plan';
 import { DEFAULT_POINTS, pointsTable, scoreHeat } from './points';
 import { computeStandings, minHeatsForFinals, tieAcrossCut, type ScoredHeat, type StandingRow } from './ranking';
 import { createRng, hashString, randomId, shuffle } from './rng';
-import type { CupPick, FinalsStage, Heat, HeatResult, HeatScore, Phase, Player, PlayerStatus, Round, Settings, StageConfig, SuddenDeath, Tournament } from './types';
+import type { CupPick, FinalsStage, Heat, HeatResult, HeatScore, Phase, Player, PlayerStatus, RaceSetup, Round, Settings, StageConfig, SuddenDeath, Tournament } from './types';
 
 export type IdGen = () => string;
 
@@ -22,8 +22,11 @@ export function defaultSettings(): Settings {
     name: 'Kart Cup',
     date: new Date().toISOString().slice(0, 10),
     format: 'knockout',
+    formatAuto: true,
     heatSize: 8,
     racesPerHeat: 4,
+    race: { kind: 'gp', races: 4, cc: '150' },
+    lateSignups: true,
     qualRounds: 3,
     points: DEFAULT_POINTS.slice(),
     entryMode: 'totals',
@@ -47,7 +50,7 @@ export function defaultSettings(): Settings {
 }
 
 export function createTournament(settings: Settings, id: string, now: number): Tournament {
-  return { version: 2, id, settings, players: [], rounds: [], finals: null, suddenDeath: [], createdAt: now, rngCounter: 0 };
+  return { version: 3, id, settings, players: [], rounds: [], finals: null, suddenDeath: [], createdAt: now, rngCounter: 0 };
 }
 
 // ---------------------------------------------------------------- lookups
@@ -142,8 +145,25 @@ export function tableFor(t: Tournament): number[] {
   return pointsTable(t.settings);
 }
 
+/** The race setup a heat is raced with: its round's, or the settings' for classic finals heats. */
+export function raceOf(t: Tournament, heatId: string): RaceSetup {
+  const r = t.rounds.find((x) => x.heats.some((h) => h.id === heatId) || x.lastChance?.id === heatId);
+  if (r?.race) return r.race;
+  if (r) return { kind: t.settings.racesPerHeat === 4 ? 'gp' : 'vs', races: t.settings.racesPerHeat, cc: t.settings.race.cc };
+  return t.settings.race;
+}
+
+export const racesOf = (t: Tournament, heatId: string) => raceOf(t, heatId).races;
+
 export function scoreOf(t: Tournament, heat: Heat): HeatScore[] | null {
-  return scoreHeat(heat, tableFor(t), t.settings.racesPerHeat);
+  return scoreHeat(heat, tableFor(t), racesOf(t, heat.id));
+}
+
+/** A valid race setup: a Grand Prix always has 4 races, VS 1..32. */
+export function normalizeRace(r: RaceSetup): RaceSetup {
+  const cc = (['50', '100', '150', '200', 'mirror'] as const).includes(r.cc) ? r.cc : '150';
+  if (r.kind === 'gp') return { kind: 'gp', races: 4, cc };
+  return { kind: 'vs', races: Math.min(32, Math.max(1, Math.round(r.races) || 4)), cc };
 }
 
 export function phaseOf(t: Tournament): Phase {
@@ -317,6 +337,7 @@ export function lateJoinSlots(t: Tournament): Heat[] {
 /** Can someone still sign up and race? */
 export function registrationOpen(t: Tournament): boolean {
   if (phaseOf(t) === 'podium') return false;
+  if (!t.settings.lateSignups && t.rounds.length > 0) return false;
   if (t.settings.format === 'classic') return !t.finals;
   if (t.settings.format === 'knockout') return !t.rounds.length || lateJoinSlots(t).length > 0;
   // League: while a seat is free in the cups to come.
@@ -364,7 +385,12 @@ const noPairingStats = (groups: string[][]): PairingResult => ({ groups, score: 
  * previews where the format draws at random (classic, knockout round 1, the
  * seat order of a league cup); later knockout rounds are seeded.
  */
-export function previewRound(t: Tournament, seed: number, newId: IdGen, now: number): PreviewResult {
+export function previewRound(t: Tournament, seed: number, newId: IdGen, now: number, race?: RaceSetup): PreviewResult {
+  const p = previewRoundInner(t, seed, newId, now);
+  return p.ok ? { ...p, round: { ...p.round, race: normalizeRace(race ?? t.settings.race) } } : p;
+}
+
+function previewRoundInner(t: Tournament, seed: number, newId: IdGen, now: number): PreviewResult {
   const blocked = canGenerateRound(t);
   if (blocked) return blocked;
   if (t.settings.format === 'knockout') return previewKnockoutRound(t, seed, newId, now);
@@ -617,10 +643,20 @@ export function commitRound(t: Tournament, round: Round): Tournament {
   const inRound = new Set([...round.heats.flatMap((h) => h.playerIds), ...round.byes]);
   return {
     ...t,
+    // The next round starts from this round's race setup.
+    settings: round.race ? { ...t.settings, race: round.race } : t.settings,
     rngCounter: t.rngCounter + 1,
     players: t.players.map((p) => (inRound.has(p.id) && p.status === 'checked-in' ? { ...p, status: 'active' } : p)),
     rounds: [...t.rounds, round],
   };
+}
+
+/** Change how an unraced round is raced. */
+export function setRoundRace(t: Tournament, roundId: string, race: RaceSetup): Tournament {
+  const r = t.rounds.find((x) => x.id === roundId);
+  if (!r || roundHeats(r).some(isPlayed)) return t;
+  const norm = normalizeRace(race);
+  return { ...t, settings: r.index === t.rounds.length - 1 ? { ...t.settings, race: norm } : t.settings, rounds: t.rounds.map((x) => (x.id === roundId ? { ...x, race: norm } : x)) };
 }
 
 function mapHeat(t: Tournament, heatId: string, fn: (h: Heat) => Heat): Tournament {
@@ -658,14 +694,19 @@ export function setHeatCup(t: Tournament, heatId: string, cup: CupPick | undefin
   return mapHeat(t, heatId, (h) => ({ ...h, cup }));
 }
 
-/** Random cup/track pick that avoids repeats until the whole pool has been used. */
-export function randomCupFor(t: Tournament, seed: number): CupPick | undefined {
+/**
+ * Random cup/track pick that avoids repeats until the whole pool has been used.
+ * A Grand Prix gets a cup (or 4 tracks); VS races get as many tracks as races.
+ */
+export function randomCupFor(t: Tournament, seed: number, heatId?: string): CupPick | undefined {
   const rng = createRng(seed);
   const cups = cupPool(CUPS, t.settings.boosterPass);
   const used = usedFromHeats(allHeats(t));
+  const race = heatId ? raceOf(t, heatId) : t.settings.race;
+  if (t.settings.trackMode === 'none' || t.settings.trackMode === 'pick') return undefined;
+  if (race.kind === 'vs') return pickRandomTracks(trackPool(cups), used.tracks, race.races, rng);
   if (t.settings.trackMode === 'random-cup') return pickRandomCup(cups, used.cups, rng);
-  if (t.settings.trackMode === 'random-tracks') return pickRandomTracks(trackPool(cups), used.tracks, t.settings.racesPerHeat, rng);
-  return undefined;
+  return pickRandomTracks(trackPool(cups), used.tracks, 4, rng);
 }
 
 /** Swap the play order of two unplayed heats in the current queue. */

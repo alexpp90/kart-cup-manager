@@ -1,15 +1,15 @@
 // Organizer card: start phone sign-up, show the QR code and the link, stop it.
 import { registrationOpen } from '../engine/tournament';
-import { joinUrl, serverMode, startPhoneSignUp, stopPhoneSignUp, usePhone } from '../lib/server';
+import { joinUrl, serverMode, startPhoneSignUp, stopPhoneSignUp, usePhone, wifiQr } from '../lib/server';
 import { useApp, useT } from '../store/store';
 import { confirmDialog } from '../store/ui';
 import { Card } from './Bits';
-import { QrCode } from './QrCode';
+import { JoinQrs } from './JoinQrs';
 
 export function PhoneSignupCard() {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const { status, session } = usePhone();
+  const { status, session, info } = usePhone();
   if (!serverMode()) {
     return (
       <Card title={t('phone.title')} tone="navy" className="phone-card">
@@ -32,7 +32,7 @@ export function PhoneSignupCard() {
   return (
     <Card title={t('phone.title')} tone="navy" className="phone-card">
       <div className="phone-live">
-        <QrCode text={url} size={168} label={t('phone.qrLabel', { url })} />
+        <JoinQrs join={url} wifi={wifiQr(info)} ssid={info?.wifi?.ssid} password={info?.wifi?.password} size={168} />
         <div className="phone-info">
           <span className={`chip ${status === 'live' ? 'chip-ok' : 'chip-warn'}`} data-testid="phone-status">
             {t(`phone.status.${status === 'live' ? 'live' : status === 'offline' ? 'offline' : 'starting'}`)}

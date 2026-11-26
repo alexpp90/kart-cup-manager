@@ -13,7 +13,7 @@ export const CORRUPT_KEY = 'kart-cup-manager:v1:corrupt';
 export const DRAFT_PREFIX = 'kart-cup-manager:draft:';
 export const HISTORY_LIMIT = 30;
 /** Highest tournament schema this build understands. */
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 export interface Snapshot {
   label: string;
@@ -79,6 +79,7 @@ export function migrateTournament(raw: unknown): MigrateResult {
   }
   const s = t.settings as Record<string, unknown>;
   if (t.version === 1) upgradeV1(t, s, repairs);
+  if (t.version === 2) upgradeV2(t, s);
   const defaults = defaultSettings() as unknown as Record<string, unknown>;
   for (const [key, def] of Object.entries(defaults)) {
     const sameType = (v: unknown) => (Array.isArray(def) ? Array.isArray(v) : typeof v === typeof def);
@@ -97,6 +98,11 @@ export function migrateTournament(raw: unknown): MigrateResult {
   oneOf('format', ['classic', 'knockout', 'league']);
   oneOf('entryMode', ['totals', 'ranking', 'per-race']);
   oneOf('fill', ['best', 'last-chance', 'off']);
+  const race = s.race as Record<string, unknown>;
+  if (!isObj(race) || (race.kind !== 'gp' && race.kind !== 'vs') || !isNum(race.races) || !['50', '100', '150', '200', 'mirror'].includes(race.cc as string)) {
+    s.race = { kind: 'gp', races: 4, cc: '150' };
+    repairs.push('settings.race');
+  }
   if (s.format === 'classic' && (s.heatSize as number) < 3) {
     s.heatSize = 3;
     repairs.push('settings.heatSize');
@@ -172,6 +178,19 @@ function upgradeV1(t: Record<string, unknown>, s: Record<string, unknown>, repai
   if (!isNum(s.availableMinutes)) s.availableMinutes = 0;
   if (!isStr(s.startTime)) s.startTime = '';
   t.version = 2;
+}
+
+/**
+ * Version 2 → 3: race setup per round and in the settings (a Grand Prix if the
+ * old races per heat were 4, else VS races), late sign-ups allowed, and the
+ * format counts as chosen (it was set in the old setup wizard).
+ */
+function upgradeV2(t: Record<string, unknown>, s: Record<string, unknown>): void {
+  const races = isNum(s.racesPerHeat) && s.racesPerHeat > 0 ? Math.round(s.racesPerHeat) : 4;
+  if (!isObj(s.race)) s.race = { kind: races === 4 ? 'gp' : 'vs', races, cc: '150' };
+  if (typeof s.lateSignups !== 'boolean') s.lateSignups = true;
+  if (typeof s.formatAuto !== 'boolean') s.formatAuto = false;
+  t.version = 3;
 }
 
 // ------------------------------------------------------------- stored envelope

@@ -195,7 +195,7 @@ describe('recovery', () => {
     expect(m.ok && m.t.version).toBe(CURRENT_VERSION);
     expect(m.ok && m.repairs).toContain('version');
     expect(migrateTournament({ ...t, version: CURRENT_VERSION + 1 })).toEqual({ ok: false, error: 'newer', version: CURRENT_VERSION + 1 });
-    expect(parseBackup(JSON.stringify(backupPayload({ ...t, version: 99 as 2 }, new Date(0))))).toEqual({ ok: false, error: 'newer', version: 99 });
+    expect(parseBackup(JSON.stringify(backupPayload({ ...t, version: 99 as 3 }, new Date(0))))).toEqual({ ok: false, error: 'newer', version: 99 });
     // Old envelope with wall-clock change tracking keeps its unsaved flag.
     const old = parsePersisted(JSON.stringify({ t, history: [], lastChangeAt: 5, lastExportAt: 2 }));
     expect(old.kind === 'ok' && old.data.changeSeq > old.data.exportSeq).toBe(true);
@@ -386,7 +386,7 @@ describe('schema version 2', () => {
       if (!m.ok) continue;
       expect(m.repairs).toEqual([]);
       const s = m.t.settings as unknown as Record<string, unknown>;
-      expect(m.t.version).toBe(2);
+      expect(m.t.version).toBe(CURRENT_VERSION);
       expect(s.format).toBe('classic');
       expect(s.heatSize).toBe(f.done.settings.maxPerHeat);
       expect(s.points).toEqual(f.done.settings.maxPerHeat === 4 ? f.done.settings.points4 : f.done.settings.points8);
@@ -419,5 +419,28 @@ describe('schema version 2', () => {
     const m = migrateTournament(bad);
     expect(m.ok && m.repairs).toEqual(expect.arrayContaining(['settings.heatSize', 'settings.format', 'settings.entryMode', 'settings.fill']));
     expect(m.ok && m.t.settings).toMatchObject({ heatSize: 8, format: defaultSettings().format, entryMode: defaultSettings().entryMode, fill: defaultSettings().fill });
+  });
+});
+
+describe('schema version 3', () => {
+  it('[REQ-DATA-025] version 2 data opens with a race setup per round, late sign-ups on and the format kept, without repairs', () => {
+    const t = buildDemo(newId, 0, { format: 'knockout' });
+    const v2 = structuredClone(t) as unknown as Record<string, any>;
+    v2.version = 2;
+    delete v2.settings.race;
+    delete v2.settings.lateSignups;
+    delete v2.settings.formatAuto;
+    for (const r of v2.rounds) delete r.race;
+    const m = migrateTournament(v2);
+    expect(m.ok).toBe(true);
+    if (!m.ok) return;
+    expect(m.repairs).toEqual([]);
+    expect(m.t.version).toBe(3);
+    expect(m.t.settings).toMatchObject({ race: { kind: 'gp', races: 4, cc: '150' }, lateSignups: true, formatAuto: false, format: 'knockout' });
+    expect(standings(m.t)).toEqual(standings(t));
+    const six = structuredClone(v2);
+    six.settings.racesPerHeat = 6;
+    const m6 = migrateTournament(six);
+    expect(m6.ok && m6.t.settings.race).toEqual({ kind: 'vs', races: 6, cc: '150' });
   });
 });

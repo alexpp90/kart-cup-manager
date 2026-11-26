@@ -25,6 +25,16 @@ export interface ServerOptions {
   publicUrl?: string;
   /** LAN base URLs, e.g. ["http://192.168.178.50:8080"]. */
   addresses?: () => string[];
+  /** The name guests reach the server by, e.g. "kartcup.lan" (join links use it). */
+  hostName?: string;
+  /** The Pi's own Wi-Fi, shown as a QR code that joins it. */
+  wifi?: { ssid: string; password: string } | null;
+  /**
+   * Captive sign-up (the Pi's own Wi-Fi): requests for any other host, such as
+   * phones' connection checks, are sent to /join, so joining the Wi-Fi opens
+   * the sign-up page by itself.
+   */
+  captive?: boolean;
 }
 
 export interface StoredSignUp {
@@ -222,7 +232,19 @@ export function createApp(opts: ServerOptions) {
     return set;
   };
 
-  const joinBases = () => (opts.publicUrl ? [opts.publicUrl.replace(/\/$/, '')] : (opts.addresses?.() ?? []));
+  const ownBase = opts.hostName ? `http://${opts.hostName}${opts.port === 80 ? '' : `:${opts.port}`}` : null;
+  const joinBases = () => (opts.publicUrl ? [opts.publicUrl.replace(/\/$/, '')] : ownBase ? [ownBase] : (opts.addresses?.() ?? []));
+  const newest = () => [...sessions.values()].sort((a, b) => b.createdAt - a.createdAt)[0];
+  /** Hosts this server answers as itself: its name, localhost and IP addresses. */
+  const isOwnHost = (host: string) => {
+    const h = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '').toLowerCase();
+    const name = opts.hostName?.toLowerCase();
+    return !h || h === name || (!!name && h === name.split('.')[0]) || h === 'localhost' || h.endsWith('.local') || /^[\d.]+$/.test(h) || h.includes(':');
+  };
+  const redirect = (res: ServerResponse, to: string) => {
+    res.writeHead(302, { Location: to, 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+    res.end();
+  };
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const ip = req.socket.remoteAddress ?? '?';
@@ -230,6 +252,15 @@ export function createApp(opts: ServerOptions) {
     const parts = url.pathname.split('/').filter(Boolean);
     const method = req.method ?? 'GET';
     await purge();
+
+    // ---- captive sign-up: phones' connection checks and other hosts go to /join
+    if (opts.captive && !isOwnHost(req.headers.host ?? '')) return redirect(res, `${ownBase ?? ''}/join`);
+
+    // ---- /join: the current sign-up (the QR code for phones already on the Wi-Fi, and captive pages)
+    if (url.pathname === '/join' && (method === 'GET' || method === 'HEAD')) {
+      const s = newest();
+      return redirect(res, s ? `/#/s/${s.code}` : '/#/s');
+    }
 
     // ---- the app
     if ((method === 'GET' || method === 'HEAD') && (url.pathname === '/' || url.pathname === '/index.html')) {
@@ -242,15 +273,15 @@ export function createApp(opts: ServerOptions) {
     // ---- GET /api/info: where phones can reach this server
     if (parts[1] === 'info' && parts.length === 2) {
       if (method !== 'GET') return fail(res, 405, 'method');
-      return send(res, 200, { ok: true, bases: joinBases(), port: opts.port });
+      return send(res, 200, { ok: true, bases: joinBases(), port: opts.port, host: opts.hostName ?? null, wifi: opts.wifi ?? null, captive: !!opts.captive });
     }
 
     // ---- GET /api/local/session: the newest open session, only for the server's own screen
     if (parts[1] === 'local' && parts[2] === 'session' && parts.length === 3) {
       if (method !== 'GET') return fail(res, 405, 'method');
       if (!isLoopback(ip)) return fail(res, 403, 'local-only');
-      const newest = [...sessions.values()].sort((a, b) => b.createdAt - a.createdAt)[0];
-      return newest ? send(res, 200, { ok: true, code: newest.code, bases: joinBases() }) : fail(res, 404, 'no-session');
+      const n = newest();
+      return n ? send(res, 200, { ok: true, code: n.code, bases: joinBases(), wifi: opts.wifi ?? null }) : fail(res, 404, 'no-session');
     }
 
     // ---- POST /api/sessions: start a sign-up session
@@ -277,7 +308,7 @@ export function createApp(opts: ServerOptions) {
       };
       sessions.set(s.code, s);
       await save(s);
-      return send(res, 201, { ok: true, code: s.code, adminKey: key, expiresAt: s.expiresAt, bases: joinBases() });
+      return send(res, 201, { ok: true, code: s.code, adminKey: key, expiresAt: s.expiresAt, bases: joinBases(), host: opts.hostName ?? null });
     }
 
     // ---- /api/s/:code/...

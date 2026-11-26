@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CODE_ALPHABET } from '../shared/signup';
+import { CODE_ALPHABET, wifiQrText } from '../shared/signup';
 import { createApp, LIMITS } from './core';
 
 let clock = 1_800_000_000_000;
@@ -16,17 +16,20 @@ async function start(dir = mkdtempSync(path.join(tmpdir(), 'kcm-')), extra: Part
   const server = createServer((req, res) => {
     // Tests choose the caller's address with a header (the real server uses the socket).
     const ip = req.headers['x-test-ip'];
+    // fetch() won't let tests set Host; a header stands in for it.
+    if (typeof req.headers['x-test-host'] === 'string') req.headers.host = req.headers['x-test-host'];
     if (typeof ip === 'string') Object.defineProperty(req.socket, 'remoteAddress', { value: ip, configurable: true });
     void app.handle(req, res);
   });
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   servers.push(server);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const call = async (method: string, url: string, o: { body?: unknown; raw?: string; key?: string; ip?: string; type?: string } = {}) => {
+  const call = async (method: string, url: string, o: { body?: unknown; raw?: string; key?: string; ip?: string; type?: string; host?: string } = {}) => {
     const headers: Record<string, string> = { 'x-test-ip': o.ip ?? '192.168.1.20' };
+    if (o.host) headers['x-test-host'] = o.host;
     if (o.body !== undefined || o.raw !== undefined) headers['content-type'] = o.type ?? 'application/json';
     if (o.key) headers.authorization = `Bearer ${o.key}`;
-    const res = await fetch(base + url, { method, headers, body: o.raw ?? (o.body !== undefined ? JSON.stringify(o.body) : undefined) });
+    const res = await fetch(base + url, { method, headers, redirect: 'manual', body: o.raw ?? (o.body !== undefined ? JSON.stringify(o.body) : undefined) });
     const text = await res.text();
     let json: Record<string, unknown> = {};
     try {
@@ -203,5 +206,38 @@ describe('[REQ-SEC-003] no outgoing requests, no IP logging', () => {
     expect(src).not.toMatch(/\bfetch\(|node:https|http\.request|https\.request|new WebSocket|node:net\b|node:dgram/);
     expect(src).not.toMatch(/console\.\w+\([^)]*remoteAddress/);
     expect(src).not.toMatch(/console\.\w+\([^)]*\bip\b/);
+  });
+});
+
+describe('[REQ-HOST-007][REQ-HOST-008] the Pi\'s own Wi-Fi: captive sign-up, names, Wi-Fi QR', () => {
+  const pi = { hostName: 'kartcup.lan', port: 80, captive: true, wifi: { ssid: 'Kart Cup', password: 'abc;de:f' } };
+
+  it('[REQ-HOST-007] phones\' connection checks and other hosts are sent to /join, which leads to the newest sign-up', async () => {
+    const { call } = await start(undefined, pi);
+    for (const [host, path] of [['connectivitycheck.gstatic.com', '/generate_204'], ['captive.apple.com', '/hotspot-detect.html'], ['www.msftconnecttest.com', '/connecttest.txt'], ['example.org', '/']]) {
+      const r = await call('GET', path, { host });
+      expect(r.status, host).toBe(302);
+      expect(r.headers.get('location')).toBe('http://kartcup.lan/join');
+    }
+    // Before a session exists /join says so; then it leads to the newest one.
+    expect((await call('GET', '/join', { host: 'kartcup.lan' })).headers.get('location')).toBe('/#/s');
+    const { code } = await session(call);
+    expect((await call('GET', '/join', { host: 'kartcup.lan' })).headers.get('location')).toBe(`/#/s/${code}`);
+    // The server's own names and addresses are served normally.
+    for (const host of ['kartcup.lan', 'kartcup.local', '10.42.0.1', 'localhost:8080']) expect((await call('GET', '/', { host })).status, host).toBe(200);
+    expect((await call('GET', `/api/s/${code}`, { host: 'kartcup.lan' })).status).toBe(200);
+  });
+
+  it('[REQ-HOST-008] join links use the name, never an IP; the Wi-Fi is published for the QR code', async () => {
+    const { call } = await start(undefined, pi);
+    const info = await call('GET', '/api/info', { host: 'kartcup.lan' });
+    expect(info.json).toMatchObject({ bases: ['http://kartcup.lan'], host: 'kartcup.lan', wifi: { ssid: 'Kart Cup', password: 'abc;de:f' }, captive: true });
+    const s = await call('POST', '/api/sessions', { body: {}, host: 'kartcup.lan' });
+    expect(s.json.bases).toEqual(['http://kartcup.lan']);
+    expect(wifiQrText('Kart Cup', 'abc;de:f')).toBe('WIFI:T:WPA;S:Kart Cup;P:abc\\;de\\:f;;');
+    expect(wifiQrText('Open "Net"', '')).toBe('WIFI:T:nopass;S:Open \\"Net\\";;');
+    // Without captive mode nothing is redirected.
+    const plain = await start();
+    expect((await plain.call('GET', '/', { host: 'example.org' })).status).toBe(200);
   });
 });

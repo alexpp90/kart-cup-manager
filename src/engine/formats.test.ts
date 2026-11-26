@@ -19,8 +19,11 @@ import {
   leagueTable,
   leagueTie,
   luckyLosers,
+  normalizeRace,
   phaseOf,
+  randomCupFor,
   registrationOpen,
+  scoreOf,
   roundOutcome,
   upcoming,
 } from './tournament';
@@ -177,6 +180,9 @@ describe('[REQ-FMT-008] knockout rounds in the tournament', () => {
     if (o.status !== 'done') throw new Error(o.status);
     const leaver = o.advancing[0];
     t = run(t, { type: 'withdraw', id: leaver });
+    // Simulated results can leave a real tie on the new cut line: settle it like the app would.
+    const pending = roundOutcome(t, t.rounds[0]);
+    if (pending.status === 'tie') t = run(t, { type: 'resolveSuddenDeath', entry: { key: suddenDeathKey(pending.tie), order: pending.tie } });
     const o2 = roundOutcome(t, t.rounds[0]);
     expect(o2.status === 'done' && o2.advancing).toHaveLength(6);
     expect(o2.status === 'done' && o2.advancing.includes(leaver)).toBe(false);
@@ -327,5 +333,50 @@ describe('[REQ-ARCH-001] commands', () => {
     const r1 = applyCommand(t, { type: 'generateRound', seed: 42 }, { now: 5, newId: () => `x${++a}` });
     const r2 = applyCommand(t, { type: 'generateRound', seed: 42 }, { now: 5, newId: () => `x${++b}` });
     expect(r1).toEqual(r2);
+  });
+});
+
+describe('[REQ-FMT-015] race mode per round', () => {
+  it('[REQ-FMT-015] a round keeps its race setup; VS races change scoring, entry length and the next round\'s default', () => {
+    let t = setup(8, { format: 'league', heatSize: 8, leagueCups: 2, entryMode: 'ranking' });
+    expect(t.settings.race).toEqual({ kind: 'gp', races: 4, cc: '150' });
+    t = run(t, { type: 'generateRound', seed: 1, race: { kind: 'vs', races: 6, cc: '200' } });
+    const h = t.rounds[0].heats[0];
+    expect(t.rounds[0].race).toEqual({ kind: 'vs', races: 6, cc: '200' });
+    expect(t.settings.race).toEqual({ kind: 'vs', races: 6, cc: '200' });
+    // Final order only: table[place] × 6 races.
+    t = run(t, { type: 'saveResult', heatId: h.id, result: { mode: 'ranking', order: h.playerIds } });
+    expect(scoreOf(t, t.rounds[0].heats[0])![0].points).toBe(15 * 6);
+    // Per race needs exactly 6 races now.
+    const four = Array.from({ length: 4 }, () => h.playerIds);
+    expect(applyCommand(t, { type: 'saveResult', heatId: h.id, result: { mode: 'per-race', races: four } }, ctx())).toEqual({ ok: false, error: 'invalid-result' });
+    // A Grand Prix is always 4 races; VS is clamped to 1..32.
+    expect(normalizeRace({ kind: 'gp', races: 9, cc: '50' })).toEqual({ kind: 'gp', races: 4, cc: '50' });
+    expect(normalizeRace({ kind: 'vs', races: 99, cc: 'mirror' })).toEqual({ kind: 'vs', races: 32, cc: 'mirror' });
+    // The race of an unraced round can change; a raced one cannot.
+    t = run(t, { type: 'generateRound', seed: 2 });
+    expect(t.rounds[1].race).toEqual({ kind: 'vs', races: 6, cc: '200' });
+    t = run(t, { type: 'setRoundRace', roundId: t.rounds[1].id, race: { kind: 'gp', races: 4, cc: 'mirror' } });
+    expect(t.rounds[1].race?.cc).toBe('mirror');
+    expect(applyCommand(t, { type: 'setRoundRace', roundId: t.rounds[0].id, race: { kind: 'gp', races: 4, cc: '50' } }, ctx()).ok).toBe(false);
+  });
+
+  it('[REQ-FMT-015] VS rounds get as many random tracks as races', () => {
+    let t = setup(4, { format: 'league', heatSize: 4, trackMode: 'random-cup' });
+    t = run(t, { type: 'generateRound', seed: 1, race: { kind: 'vs', races: 6, cc: '150' } });
+    const pick = randomCupFor(t, 7, t.rounds[0].heats[0].id);
+    expect(pick?.kind).toBe('tracks');
+    expect(pick?.kind === 'tracks' && pick.trackIds).toHaveLength(6);
+  });
+});
+
+describe('[REQ-UI-032] late sign-ups', () => {
+  it('[REQ-UI-032] with late sign-ups off, registration closes when round 1 is drawn', () => {
+    let on = setup(4, { format: 'league', heatSize: 8 });
+    let off = setup(4, { format: 'league', heatSize: 8, lateSignups: false });
+    on = run(on, { type: 'generateRound', seed: 1 });
+    off = run(off, { type: 'generateRound', seed: 1 });
+    expect(registrationOpen(on)).toBe(true);
+    expect(registrationOpen(off)).toBe(false);
   });
 });

@@ -68,8 +68,9 @@ npm run package:server
 node dist/kart-cup-server/server.mjs
 ```
 
-Open the address it prints (e.g. `http://192.168.178.50:8080`) on the organizer's laptop, then
-*Players → Phone sign-up → Start phone sign-up*. Phones must be on the same Wi-Fi. The offline
+Open the address it prints on the organizer's laptop, then *Home → Phone sign-up → Start phone
+sign-up*. On a Raspberry Pi the installer sets up a **Kart Cup** Wi-Fi: one QR code on the TV joins
+it and the sign-up opens by itself, and the app is reached as `http://kartcup.lan`. The offline
 `index.html` keeps working without any of this and never touches the network.
 
 ## Tests
@@ -101,26 +102,20 @@ npm run trace:check  # requirements × tests → docs/traceability.md; fails on 
 ## Organizer cheat sheet (event day)
 
 **Before guests arrive**
-1. Open `index.html` on the laptop. Choose **New tournament** and walk through the 4 setup steps. In **Format**, set the expected players and the heat size (number of controllers). The app suggests a format:
-   * **League** when everyone fits into one heat: everyone races every cup, most points wins.
-   * **Knockout cups** otherwise: the top X of each heat go on; free places go to the best of the rest (🍀 lucky losers) or to a Last Chance heat; the last round is the final.
-   * **Classic**: qualifying rounds by average, then finals.
-   The plan on the right shows every round, the total time and, with a start time, when the night ends. Over 3 hours (or over the time you have) it lists shorter options you can apply with one click.
-2. Already have a guest list? **Players → Quick add**, paste the names (one per line).
+1. Open the app (from the Kart Cup server: `http://kartcup.lan`; or the offline `index.html`). **New tournament** → give it a name → sign-up is open.
+2. Sign-up: guests scan the QR code on the TV (Kart Cup server), use the kiosk window or the station on the Pi's screen, or you add them (*Players → Add* or *Quick add*).
 3. Plug in the TV. Press the **TV icon** in the top bar, drag the new window to the TV and **double-click it for fullscreen**. It updates by itself and has no buttons.
-4. Optional: open the **Kiosk** (tablet icon) in a window on a second screen attached to the laptop so people can sign up themselves ("Join the Race!"). A separate tablet does not work: it would keep its own data.
-5. Press **Export backup** once so you have a starting point.
+4. Press **Export backup** once so you have a starting point.
 
-**Controllers**
-* Label your controllers 1–8. Every heat shows the controller number next to each name (round preview, heat cards, Home, TV). On the result screen the number keys are the controller numbers.
-* Nobody picks a character in the app: everyone picks theirs on the console. The app shows each player as a colour badge with their initials.
+**Start racing**
+* When everyone is there: Home → **Start racing**. Choose the heat size (how many play at once tonight), check the suggested format (league if everyone fits into one heat, otherwise knockout cups; classic is there too), how round 1 is raced (**Grand Prix** or **VS races**, and the class), and whether **late sign-ups** are allowed. The plan on the right shows every round, the time and, with a start time (Settings), when the night ends.
 
 **Check-in**
 * Kiosk sign-ups are checked in automatically. Quick-add guests: tick **Checked in** in *Players* when they arrive.
 * Only checked-in players are put into heats.
 
 **Each round**
-1. Home → **Draw round 1** / **Generate Round N** / **Start cup N** → look at the preview → *Redraw* if you like (round 1 and classic rounds) → **Save round**. Later knockout rounds are seeded from the results, so there is nothing to redraw. A tie on a knockout cut line asks for a sudden death first.
+1. Home → **Generate Round N** / **Start cup N** → choose Grand Prix or VS races for this round → look at the preview → *Redraw* if you like (classic rounds) → **Save round**. Later knockout rounds are seeded from the results, so there is nothing to redraw. A tie on a knockout cut line asks for a sudden death first.
 2. The Home screen shows **Now racing** in big letters. Press **Spin the cup** (if you use the cup picker); the TV shows the roulette too.
 3. After the heat: **Enter results**.
    * *Tap mode:* tap the racers in finishing order after every race (or press 1–8). The last one fills in by itself, and the next race opens automatically.

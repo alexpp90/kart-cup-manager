@@ -13,6 +13,8 @@ import {
   movePlayer,
   normalizeName,
   previewRound,
+  racesOf,
+  setRoundRace,
   reinstatePlayer,
   resolveSuddenDeath,
   saveHeatResult,
@@ -28,7 +30,7 @@ import {
 } from './tournament';
 import { COLORS } from '../data/colors';
 import { validateResult } from './points';
-import type { CupPick, HeatResult, Player, Settings, StageConfig, SuddenDeath, Tournament } from './types';
+import type { CupPick, HeatResult, Player, RaceSetup, Settings, StageConfig, SuddenDeath, Tournament } from './types';
 
 export type Command =
   | { type: 'addPlayer'; player: NewPlayer }
@@ -41,7 +43,8 @@ export type Command =
   | { type: 'lateJoin'; playerId: string; heatId: string }
   | { type: 'updateSettings'; settings: Settings }
   | { type: 'addRound' }
-  | { type: 'generateRound'; seed: number }
+  | { type: 'generateRound'; seed: number; race?: RaceSetup }
+  | { type: 'setRoundRace'; roundId: string; race: RaceSetup }
   | { type: 'movePlayer'; playerId: string; heatId: string }
   | { type: 'swapHeats'; a: string; b: string }
   | { type: 'setCup'; heatId: string; cup?: CupPick }
@@ -125,8 +128,12 @@ export function applyCommand(t: Tournament, cmd: Command, ctx: CommandContext): 
     case 'addRound':
       return ok(t.settings.format === 'league' ? setLeagueCups(t, t.settings.leagueCups + 1) : setQualRounds(t, t.settings.qualRounds + 1));
     case 'generateRound': {
-      const p = previewRound(t, cmd.seed, ctx.newId, ctx.now);
+      const p = previewRound(t, cmd.seed, ctx.newId, ctx.now, cmd.race);
       return p.ok ? ok(commitRound(t, p.round)) : fail(p.error);
+    }
+    case 'setRoundRace': {
+      const next = setRoundRace(t, cmd.roundId, cmd.race);
+      return next === t ? fail('not-allowed') : ok(next);
     }
     case 'movePlayer': {
       const next = movePlayer(t, cmd.playerId, cmd.heatId);
@@ -139,8 +146,9 @@ export function applyCommand(t: Tournament, cmd: Command, ctx: CommandContext): 
     case 'saveResult': {
       const info = heatInfo(t, cmd.heatId);
       if (!info) return fail('unknown-heat');
-      if (validateResult(cmd.result, info.heat.playerIds, t.settings.racesPerHeat).length) return fail('invalid-result');
-      if (cmd.result.mode === 'per-race' && cmd.result.races.length !== t.settings.racesPerHeat) return fail('invalid-result');
+      const races = racesOf(t, cmd.heatId);
+      if (validateResult(cmd.result, info.heat.playerIds, races).length) return fail('invalid-result');
+      if (cmd.result.mode === 'per-race' && cmd.result.races.length !== races) return fail('invalid-result');
       return ok(saveHeatResult(t, cmd.heatId, cmd.result, ctx.now, ctx.newId));
     }
     case 'clearResult':
@@ -182,6 +190,8 @@ export function commandLabel(t: Tournament, cmd: Command): { key: string; params
       return { key: t.settings.format === 'league' ? 'action.extraCup' : 'action.extraRound' };
     case 'generateRound':
       return { key: t.settings.format === 'league' ? 'action.cupCreated' : 'action.round', params: { n: t.rounds.length + 1 } };
+    case 'setRoundRace':
+      return { key: 'action.raceSetup' };
     case 'movePlayer':
       return { key: 'action.move', params: { name: name(cmd.playerId) } };
     case 'swapHeats':

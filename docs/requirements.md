@@ -86,9 +86,9 @@ Added with the v2 work (plan in `docs/plan-v2.md`, rules in DECISIONS §15). "S"
 | REQ-FMT-013 | A simulated knockout tournament (random results, any n, S, X, fill mode) follows its plan heat for heat and ends with a podium; every player races at least one cup. | Brief v2 §1 (property) | must | auto |
 | REQ-FMT-014 | Final standings: knockout by the final's places, then by the round players went out in (later first, then Last Chance place, points, place); league by the league table. | D§15 | must | auto |
 | REQ-PLAN-001 | Time per heat = races × minutes per race + cup overhead + changeover (default 4 × 3 + 3 + 2 = 17 min); plan time = heats (incl. Last Chance heats) × time per heat. | Brief v2 §1; D§15 | must | auto |
-| REQ-PLAN-002 | The setup has a planner step: expected players, heat size, format, X per round, fill-up mode, league cups or classic rounds, optional time available and start time; it shows a diagram per round, a breakdown and the end time. | Brief v2 §1 | must | auto |
+| REQ-PLAN-002 | Replaced by REQ-UI-031. (Was: the setup has a planner step with diagram, breakdown and end time.) | Brief v2 §1 | must | auto |
 | REQ-PLAN-003 | Over 3 hours or over the time available the planner warns and lists cheaper variants computed from the settings (fewer advancing, no fill-ups / no Last Chance, fewer cups or rounds, knockout instead of classic), each with the time saved, the ones that fit first. | Brief v2 §1 | must | auto |
-| REQ-PLAN-004 | Home shows the live plan for the real number of players and the difference to the setup plan. | Brief v2 §1 | should | auto |
+| REQ-PLAN-004 | Replaced by REQ-UI-031. (Was: Home shows the live plan for the real number of players and the difference to the setup plan; with sign-up first the plan is made with the real players.) | Brief v2 §1 | should | auto |
 | REQ-TIME-001 | Heat times are measured between consecutive first saves (the first heat from when its round was created); gaps over 2.5× the estimate are breaks; corrected minutes per heat = (2 × guess + Σ measured) / (2 + measured heats). | Brief v2 §1; D§15 | must | auto |
 | REQ-TIME-002 | Home and the big screen show minutes per heat (and how many heats were measured), heats left and the expected end time. | Brief v2 §1 | must | auto |
 | REQ-ARCH-001 | Every tournament change from the screens goes through `dispatch(command)`; `applyCommand` is pure, validates its input and rejects invalid commands without changing state. | Brief v2 §2; D§15 | must | auto |
@@ -107,6 +107,9 @@ source of truth for the tournament.
 | REQ-HOST-004 | QR codes are generated in the app by its own encoder (byte mode, level M, versions 1–10) and read back exactly. | Brief v2 §2 (no third-party requests) | must | auto |
 | REQ-HOST-005 | The offline single file and any copy not served by the Kart Cup server make no network request and explain that phone sign-up needs the server. | Brief v2 §2 | must | auto |
 | REQ-HOST-006 | On a Raspberry Pi 3 the installer sets up the server as a service on port 8080 and the station full screen; a real phone scans the QR code and signs up. | User 2026-11-26 | must | manual |
+| REQ-HOST-007 | Captive sign-up: on the Pi's own "Kart Cup" Wi-Fi, phones' connection checks and any unknown host are sent to the sign-up page (`/join` → the newest session), so joining the Wi-Fi opens the sign-up page by itself. | User 2026-11-26; D§18 | must | auto |
+| REQ-HOST-008 | One QR code on the TV and the station joins the Pi's Wi-Fi (WIFI: format with the generated password); a second, smaller one opens the page for phones already on it. Pages are reached by name (`http://kartcup.lan`, port 80), never by IP. | User 2026-11-26; D§18 | must | auto |
+| REQ-HOST-009 | The Pi installer creates the "Kart Cup" Wi-Fi hotspot (WPA2, random password, NetworkManager shared mode), local names for kartcup.lan and the connection-check hosts, runs the server on port 80, and keeps the cable to a router optional (guests then keep internet). | User 2026-11-26; D§18 | must | manual |
 | REQ-SEC-001 | Everything a guest sends is treated as hostile: JSON only, bodies ≤ 16 KB, names ≤ 24 and tags ≤ 8 characters as people see them, control and bidi characters removed, colours only from the palette; admin requests need the key, compared in constant time; guests never see it. | Brief v2 §2 | must | auto |
 | REQ-SEC-002 | Rate limits and caps: ≤ 10 sign-ups per minute per device and ≤ 30 per session, ≤ 20 wrong codes per 10 minutes per device, ≤ 5 new sessions per hour per device, a cap on open sessions, ≤ 64 players per session. | Brief v2 §2 | must | auto |
 | REQ-SEC-003 | The server makes no outgoing requests and logs no IP addresses. | Brief v2 §2 | must | auto |
@@ -115,7 +118,7 @@ source of truth for the tournament.
 
 | ID | Requirement | Source | Prio | Kind |
 |---|---|---|---|---|
-| REQ-UI-001 | Setup wizard collects name, date, max per heat, races, qualifying rounds, finals format, points table, entry mode, track mode, and shows a live time estimate. | Spec: Core flow 1 | must | auto |
+| REQ-UI-001 | Replaced by REQ-UI-030. (Was: setup wizard collects name, date, max per heat, races, qualifying rounds, finals format, points table, entry mode, track mode, and shows a live time estimate.) | Spec: Core flow 1 | must | auto |
 | REQ-UI-002 | Replaced by REQ-UI-027. (Was: Kiosk "Join the Race!": name (required, unique), tag, avatar + color, favourite; kiosk sign-ups are checked in automatically (setting).) | Spec: Core flow 2; D§5 | must | auto |
 | REQ-UI-003 | Quick add: paste names one per line; duplicates and blanks are skipped; option to check in right away. | Spec: Core flow 2; D§5 | must | auto |
 | REQ-UI-004 | Players screen: list, search, check-in toggle, edit, withdraw (with confirmation), reinstate. | Spec: Screens 2 | must | auto |
@@ -144,6 +147,10 @@ source of truth for the tournament.
 | REQ-UI-027 | Kiosk "Join the Race!": name (required, unique), optional gamer tag and badge colour (the least-used colour is preselected); no character choice and no favourite character, because players pick their character on the console; kiosk sign-ups are checked in automatically (setting). | User 2026-11-26; D§16 | must | auto |
 | REQ-UI-028 | Players are shown everywhere as a badge in their colour with their initials (unique within the tournament where the names allow; earlier sign-ups keep theirs) and readable text colour; marks from the state: crown for the leader or champion, flames for 2+ heat wins in a row, clover for a lucky loser. | User 2026-11-26; D§16 | must | auto |
 | REQ-UI-029 | Every heat shows which player takes which controller (1–8) on the round preview, heat cards, Home, result entry and the big screen; result entry lists players in controller order and the number keys are the controller numbers. A late joiner gets the lowest free number; nobody's number changes when someone is moved, withdraws or joins. | User 2026-11-26; D§16 | must | auto |
+| REQ-UI-030 | Sign-up comes first: a new tournament needs only a name (and date), then sign-up starts at once (kiosk, phones, station). Heat size, format and race settings are chosen when racing starts; points, times and the rest live in Settings. | User 2026-11-26; D§18 | must | auto |
+| REQ-UI-031 | "Start racing" shows the checked-in players, lets the organizer choose the heat size (2–8), the format (suggested from the players), knockout options and the first round's race mode, with the plan (diagram per round, time, end time, warning and shorter options), then draws round 1. | User 2026-11-26; D§18 | must | auto |
+| REQ-UI-032 | A "Late sign-ups" switch: on, people can still sign up after racing started (they join where the format allows); off, kiosk, phones and the station say registration is closed once round 1 exists. | User 2026-11-26; D§18 | must | auto |
+| REQ-FMT-015 | Every round has a race mode chosen when it is drawn: Grand Prix (a cup of 4 races) or VS races (1–32 races), and a class (50/100/150/200cc, Mirror). Round 1 defaults to Grand Prix 150cc; later rounds default to the previous round's choice. Result entry, points (final order only: table × races) and time estimates use the round's number of races; Home, heat cards and the TV show mode, class and cup. | User 2026-11-26; D§18 | must | auto |
 
 ## Data and persistence (REQ-DATA)
 
@@ -173,6 +180,7 @@ source of truth for the tournament.
 | REQ-DATA-022 | Autosave is not blocked by an unrelated failing draft or prefs write. | Task §4 | should | auto |
 | REQ-DATA-023 | Schema version 2: stored data and backups of version 1 open as Classic with heat size, the points table that was in use and the old timing, and compute the same standings and finals; version 2 data with invalid format fields is repaired. | Brief v2 §1; D§15 | must | auto |
 | REQ-DATA-024 | Avatar and favourite fields of version 1 players stay in the data and in backups unchanged, but are not shown and not required. | D§16 | must | auto |
+| REQ-DATA-025 | Schema version 3: version 2 data opens with a race setup (Grand Prix when it had 4 races per heat, else VS races), late sign-ups on and its format kept, without reported repairs. | D§18 | must | auto |
 
 ## Accessibility (REQ-A11Y)
 

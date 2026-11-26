@@ -34,32 +34,37 @@ test.describe('[journey] phone sign-up', () => {
     p.on('request', (r) => requests.push(r.url()));
     await p.goto('/');
     await p.click('[data-testid=new-tournament]');
-    for (let i = 0; i < 3; i++) await p.click('[data-testid=wizard-next]');
     await p.click('[data-testid=create-tournament]');
     await expect(p.locator('[data-testid=phone-offline-hint]')).toContainText('Kart Cup server');
     expect(requests.filter((u) => u.includes('/api/'))).toEqual([]);
     await ctx.close();
   });
 
-  test('[REQ-HOST-001][REQ-HOST-002][REQ-HOST-004] the organizer starts phone sign-up and gets a QR code and a join code', async () => {
+  test('[REQ-HOST-001][REQ-HOST-002][REQ-HOST-004][REQ-HOST-008] the organizer starts phone sign-up and gets a QR code and a join code', async () => {
     await page.goto(SERVER + '/');
     await page.click('[data-testid=new-tournament]');
     await page.fill('[data-testid=setup-name]', 'Phone Night');
-    for (let i = 0; i < 3; i++) await page.click('[data-testid=wizard-next]');
     await page.click('[data-testid=create-tournament]');
+    // Sign-up comes first: the phone card is right on Home.
     await page.click('[data-testid=phone-start]');
     await expect(page.locator('[data-testid=phone-status]')).toContainText('Live');
     code = (await page.locator('[data-testid=phone-code]').textContent()) ?? '';
     expect(code).toMatch(/^[A-Z2-9]{6}$/);
-    await expect(page.locator('.phone-card [data-testid=qr]')).toBeVisible();
+    await expect(page.locator('.phone-card [data-testid=qr]').first()).toBeVisible();
     await expect(page.locator('[data-testid=phone-url]')).toContainText(`/#/s/${code}`);
+    // The server has a name and its own Wi-Fi: links use the name, the first QR code joins the Wi-Fi.
+    await expect(page.locator('[data-testid=phone-url]')).toHaveText(`http://kartcup.lan:4180/#/s/${code}`);
+    await expect(page.locator('.phone-card [data-testid=join-qrs] [data-testid=qr]')).toHaveCount(2);
+    await expect(page.locator('.phone-card [data-testid=wifi-password]')).toContainText('testpass23');
     await shot(page, 'phone', 'organizer-card');
   });
 
-  test('[REQ-HOST-002] a guest signs up on a phone and appears in the organizer’s list within seconds', async () => {
+  test('[REQ-HOST-002][REQ-HOST-007] a guest signs up on a phone and appears in the organizer’s list within seconds', async () => {
     const p = await phone.newPage();
     const perr = watchErrors(p);
-    await p.goto(`${SERVER}/#/s/${code}`);
+    // A phone that joined the Wi-Fi lands on /join (its connection check is redirected there).
+    await p.goto(`${SERVER}/join`);
+    await expect(p).toHaveURL(new RegExp(`/#/s/${code}$`));
     await expect(p.locator('.guest-title')).toHaveText('Phone Night');
     await p.fill('[data-testid=player-name]', 'Lena Phone');
     await p.fill('[data-testid=player-tag]', 'LP');
@@ -68,6 +73,7 @@ test.describe('[journey] phone sign-up', () => {
     await p.click('[data-testid=guest-submit]');
     await expect(p.locator('[data-testid=guest-welcome]')).toContainText('Lena Phone');
     await shot(p, 'phone', 'phone-welcome');
+    await page.goto(SERVER + '/#/players');
     await expect(page.locator('[data-testid=player-row]')).toHaveCount(1, { timeout: 8000 });
     await expect(page.locator('.toasts')).toContainText('signed up by phone');
     const t = await state(page);
@@ -86,7 +92,8 @@ test.describe('[journey] phone sign-up', () => {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const desk = await ctx.newPage();
     await desk.goto(`${SERVER}/#/desk`);
-    await expect(desk.locator('.desk-side [data-testid=qr]')).toBeVisible();
+    await expect(desk.locator('.desk-side [data-testid=qr]').first()).toBeVisible();
+    await expect(desk.locator('.desk-side [data-testid=wifi-password]')).toContainText('Kart Cup');
     await expect(desk.locator('[data-testid=player-name]')).toBeFocused();
     await desk.waitForTimeout(700);
     await shot(desk, 'phone', 'station');
@@ -100,11 +107,13 @@ test.describe('[journey] phone sign-up', () => {
     await ctx.close();
   });
 
-  test('[REQ-HOST-002] the TV shows the QR code; once registration closes, phones are told so', async () => {
+  test('[REQ-HOST-002][REQ-UI-032] the TV shows the QR code; with late sign-ups off, registration closes at round 1 and phones are told so', async () => {
     const tv = await org.newPage();
     await tv.setViewportSize({ width: 1920, height: 1080 });
     await tv.goto(`${SERVER}/#/big`);
     await expect(tv.locator('[data-testid=big-join-qr]')).toBeVisible({ timeout: 10_000 });
+    await expect(tv.locator('[data-testid=big-join-qr] [data-testid=qr]')).toHaveCount(2);
+    await expect(tv.locator('[data-testid=big-join-qr]')).toContainText('testpass23');
     await tv.waitForTimeout(1000);
     await shot(tv, 'phone', 'tv-registration');
     await tv.close();
@@ -115,6 +124,9 @@ test.describe('[journey] phone sign-up', () => {
     await page.click('[data-testid=save-player]');
     await page.goto(SERVER + '/');
     await page.click('[data-testid=generate-round]');
+    // Late sign-ups off: registration closes with round 1.
+    await page.click('label.toggle:has([data-testid=late-signups])');
+    await page.click('[data-testid=start-continue]');
     await page.click('[data-testid=save-round]');
     await page.goto(SERVER + '/#/players');
     await expect(page.locator('.phone-card .notice-warn')).toBeVisible({ timeout: 8000 });

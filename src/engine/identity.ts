@@ -2,8 +2,7 @@
 // and a colour badge with initials, plus marks earned during the night.
 // Pure functions of the tournament.
 export { pickColor } from './color';
-import { scoreHeat } from './points';
-import { allHeats, finalResults, isPlayed, knockoutTable, leagueTable, luckyLosers, phaseOf, standings } from './tournament';
+import { allHeats, scoreOf, finalResults, isPlayed, knockoutTable, leagueTable, luckyLosers, phaseOf, standings } from './tournament';
 import type { Player, Tournament } from './types';
 
 const letters = (s: string) => Array.from(s.normalize('NFC')).filter((ch) => /\p{L}|\p{N}/u.test(ch));
@@ -95,7 +94,7 @@ export function playerMarks(t: Tournament): Map<string, Mark[]> {
     .sort((a, b) => (a.finishedAt ?? a.savedAt ?? 0) - (b.finishedAt ?? b.savedAt ?? 0));
   const places = new Map<string, number[]>();
   for (const h of raced) {
-    for (const s of scoreHeat(h, t.settings.points, t.settings.racesPerHeat) ?? []) places.set(s.playerId, [...(places.get(s.playerId) ?? []), s.place]);
+    for (const s of scoreOf(t, h) ?? []) places.set(s.playerId, [...(places.get(s.playerId) ?? []), s.place]);
   }
   for (const [id, ps] of places) {
     let streak = 0;

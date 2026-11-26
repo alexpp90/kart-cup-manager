@@ -65,6 +65,7 @@ export function SettingsScreen() {
             <div className="form-stack">
               <Toggle checked={s.boosterPass} onChange={(v) => patch({ boosterPass: v })} label={t('setup.booster')} />
               <Toggle checked={s.kioskAutoCheckIn} onChange={(v) => patch({ kioskAutoCheckIn: v })} label={t('settings.kioskCheckIn')} />
+              <Toggle checked={s.lateSignups} onChange={(v) => patch({ lateSignups: v })} label={t('start.late')} hint={t('start.lateHint')} testId="settings-late-signups" />
             </div>
 
             <div className="save-bar">

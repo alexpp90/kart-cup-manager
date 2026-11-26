@@ -32,7 +32,7 @@ export default defineConfig({
     },
     {
       // The Kart Cup server (phone sign-up), with throwaway data.
-      command: `rm -rf test-results/server-data && PORT=${SERVER_PORT} DATA_DIR=test-results/server-data node dist/server.mjs`,
+      command: `rm -rf test-results/server-data && PORT=${SERVER_PORT} DATA_DIR=test-results/server-data HOST_NAME=kartcup.lan CAPTIVE=1 WIFI_SSID='Kart Cup' WIFI_PASSWORD=testpass23 node dist/server.mjs`,
       url: `http://localhost:${SERVER_PORT}/api/info`,
       reuseExistingServer: false,
       timeout: 30_000,

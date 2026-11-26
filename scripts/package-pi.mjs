@@ -17,7 +17,7 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 copyFileSync(path.join(root, 'dist', 'index.html'), path.join(out, 'index.html'));
 copyFileSync(path.join(root, 'dist', 'server.mjs'), path.join(out, 'server.mjs'));
-for (const f of ['install.sh', 'kart-cup.service', 'kart-cup-desk', 'kart-cup-desk.desktop', 'README.md']) copyFileSync(path.join(root, 'deploy', 'raspberry-pi', f), path.join(out, f));
+for (const f of ['install.sh', 'kart-cup.service', 'kart-cup-desk', 'kart-cup-desk.desktop', 'kart-cup-dns.conf', 'README.md']) copyFileSync(path.join(root, 'deploy', 'raspberry-pi', f), path.join(out, f));
 chmodSync(path.join(out, 'install.sh'), 0o755);
 chmodSync(path.join(out, 'kart-cup-desk'), 0o755);
 console.log(`Packed ${path.relative(root, out)}/ (copy this folder to the Pi or any device with Node.js 18+).`);

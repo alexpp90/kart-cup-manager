@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Flag, ItemBox } from '../components/Icons';
 import { PlayerForm, type PlayerDraft } from '../components/PlayerForm';
-import { QrCode } from '../components/QrCode';
+import { JoinQrs } from '../components/JoinQrs';
 import { COLORS } from '../data/colors';
 import { localSession, sessionInfo, signUp, type GuestError } from '../lib/server';
 import { sound } from '../lib/sound';
@@ -84,7 +84,7 @@ export function PhoneJoin({ code }: { code: string }) {
   const [info, setInfo] = useState<Awaited<ReturnType<typeof sessionInfo>> | null>(null);
   const [joined, setJoined] = useState<{ name: string; color: string } | null>(null);
   useEffect(() => {
-    void sessionInfo(code).then(setInfo);
+    if (code) void sessionInfo(code).then(setInfo);
   }, [code]);
   return (
     <div className="guest guest-phone">
@@ -96,7 +96,9 @@ export function PhoneJoin({ code }: { code: string }) {
           {info?.ok && info.title && <p className="guest-title">{info.title}</p>}
         </div>
       </header>
-      {!info ? (
+      {!code ? (
+        <p className="notice" data-testid="guest-not-started">{t('guest.notStarted')}</p>
+      ) : !info ? (
         <p className="muted">…</p>
       ) : !info.ok ? (
         <p className="notice notice-error" data-testid="guest-error">{t(`guest.err.${info.error}`)}</p>
@@ -154,8 +156,8 @@ export function DeskSignup() {
       <div className="desk-body">
         <GuestForm key={welcome ? 'w' : 'f'} code={session.code} via="desk" onDone={setWelcome} />
         <aside className="desk-side card">
-          <QrCode text={`${session.base}/#/s/${session.code}`} size={220} label={t('phone.qrLabel', { url: `${session.base}/#/s/${session.code}` })} />
           <p className="desk-scan">{t('desk.scan')}</p>
+          <JoinQrs join={`${session.base}/#/s/${session.code}`} wifi={session.wifi?.qr ?? null} ssid={session.wifi?.ssid} password={session.wifi?.password} size={200} variant="small" />
           <p className="muted">{t('phone.code')} <b>{session.code}</b></p>
         </aside>
       </div>

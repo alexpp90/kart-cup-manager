@@ -26,13 +26,10 @@ test('[REQ-A11Y-001] the organizer flow works by keyboard alone with a visible f
   expect(await tabTo(page, '[data-testid=setup-name]')).toBe(true);
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('Keyboard Cup');
-  for (let i = 0; i < 3; i++) {
-    expect(await tabTo(page, '[data-testid=wizard-next]', 120)).toBe(true);
-    await page.keyboard.press('Enter');
-  }
   expect(await tabTo(page, '[data-testid=create-tournament]')).toBe(true);
   await page.keyboard.press('Enter');
-  await expect(page.locator('.players')).toBeVisible();
+  await expect(page.locator('[data-testid=generate-round]')).toBeVisible();
+  await page.goto(url('players'));
   expect(await tabTo(page, '[data-testid=quick-add]')).toBe(true);
   await page.keyboard.press('Enter');
   await page.keyboard.type('Ann\nBen\nCat\nDan');
@@ -44,7 +41,9 @@ test('[REQ-A11Y-001] the organizer flow works by keyboard alone with a visible f
   await page.goto(url());
   expect(await tabTo(page, '[data-testid=generate-round]')).toBe(true);
   await page.keyboard.press('Enter');
-  expect(await tabTo(page, '[data-testid=save-round]')).toBe(true);
+  expect(await tabTo(page, '[data-testid=start-continue]', 150)).toBe(true);
+  await page.keyboard.press('Enter');
+  expect(await tabTo(page, '[data-testid=save-round]', 150)).toBe(true);
   await page.keyboard.press('Enter');
   expect(await tabTo(page, '[data-testid=home-enter]')).toBe(true);
   await page.keyboard.press('Enter');

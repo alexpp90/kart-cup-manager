@@ -5,11 +5,13 @@ Wants=network-online.target
 
 [Service]
 User=@USER@
-Environment=PORT=@PORT@
-Environment=DATA_DIR=/var/lib/kart-cup
+EnvironmentFile=/etc/kart-cup/env
 ExecStart=/usr/bin/env node /opt/kart-cup/server.mjs
 Restart=always
 RestartSec=2
+# Port 80 without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 # Hardening: the server only needs its data folder.
 NoNewPrivileges=yes
 ProtectSystem=strict

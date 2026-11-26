@@ -4,7 +4,7 @@
 import { test as base, type BrowserContext, type Page } from '@playwright/test';
 import {
   diskUrl as url, enterPerRace, enterTotals, expect, generateRound, kioskRegister, NAMES, permuter, playQueue, quickAdd,
-  settleSuddenDeaths, setupTournament, shot, state, watchErrors,
+  openRoundPreview, settleSuddenDeaths, shot, state, watchErrors,
 } from './helpers';
 
 const test = base;
@@ -26,31 +26,22 @@ test.afterEach(() => expect(errors, 'browser errors').toEqual([]));
 test.afterAll(async () => ctx.close());
 
 test.describe('[journey] 30 players, max 8', () => {
-  test('[REQ-UI-001] setup wizard collects all settings and shows a live time estimate', async () => {
+  test('[REQ-UI-030] a new tournament needs only a name; sign-up opens at once; the rest is in Settings', async () => {
     await page.goto(url());
     await page.click('[data-testid=new-tournament]');
-    await expect(page.locator('.wizard-step')).toHaveCount(4);
-    const estimate = page.locator('.estimate-big');
+    await expect(page.locator('.wizard-step')).toHaveCount(0);
     await page.fill('[data-testid=setup-name]', 'Kart Cup Night');
-    for (const step of ['Format', 'Scoring', 'Tracks']) {
-      await page.click('[data-testid=wizard-next]');
-      await expect(page.locator('.wizard-step.on')).toContainText(step);
-    }
-    await page.click('.wizard-step:has-text("Format")');
-    await page.click('[data-testid=heat-size-8]');
-    await page.click('[data-testid=format-classic]');
-    await page.locator('[data-testid=expected-players]').fill('12');
-    const before = await estimate.textContent();
-    await page.locator('[data-testid=expected-players]').fill('30');
-    await expect(estimate).not.toHaveText(before ?? '');
-    await page.click('.wizard-step:has-text("Scoring")');
+    await page.click('[data-testid=create-tournament]');
+    // Home: registration is open, the next step is "Start racing".
+    await expect(page.locator('[data-testid=generate-round]')).toHaveText('Start racing');
+    await expect(page.locator('.now-card')).toContainText('Registration is open');
+    // Scoring and the other details live in Settings.
+    await page.goto(url('settings'));
     await expect(page.locator('[data-testid=entry-totals]')).toBeVisible();
     await page.click('[data-testid=entry-per-race]');
     await expect(page.locator('.points-table.is-active .points-cell input').first()).toHaveValue('15');
-    await page.click('.wizard-step:has-text("Tracks")');
-    await page.click('[data-testid=create-tournament]');
-    await expect(page.locator('.players')).toBeVisible();
-    expect((await state(page)).settings).toMatchObject({ name: 'Kart Cup Night', format: 'classic', heatSize: 8, racesPerHeat: 4, qualRounds: 3, entryMode: 'per-race' });
+    await page.click('[data-testid=save-settings]');
+    expect((await state(page)).settings).toMatchObject({ name: 'Kart Cup Night', heatSize: 8, entryMode: 'per-race', formatAuto: true, lateSignups: true });
   });
 
   test('[REQ-UI-003] quick add skips duplicates and blanks and can check everyone in', async () => {
@@ -80,10 +71,28 @@ test.describe('[journey] 30 players, max 8', () => {
     expect((await state(page)).players).toHaveLength(30);
   });
 
+  test('[REQ-UI-031][REQ-FMT-015] Start racing: heat size, format and round 1 race mode chosen with the real players and the plan', async () => {
+    await page.goto(url());
+    await page.click('[data-testid=generate-round]');
+    await expect(page.locator('[data-testid=start-count]')).toContainText('30 players');
+    // 30 players at 8: knockout is suggested; this night is a classic one.
+    await expect(page.locator('[data-testid=format-knockout]')).toHaveClass(/choice-on/);
+    await page.click('[data-testid=heat-size-8]');
+    await page.click('[data-testid=format-classic]');
+    await expect(page.locator('.modal [data-testid=plan-total]')).toBeVisible();
+    await expect(page.locator('[data-testid=start-race-kind-gp]')).toHaveClass(/choice-on/);
+    await page.click('[data-testid=start-race-cc-200]');
+    await shot(page, OUT, 'start-racing');
+    await page.click('[data-testid=start-continue]');
+    await expect(page.locator('[data-testid=race-setup] [data-testid=race-chip]')).toContainText('Grand Prix · 200cc');
+    await page.keyboard.press('Escape');
+    expect((await state(page)).settings).toMatchObject({ format: 'classic', formatAuto: false, race: { kind: 'gp', races: 4, cc: '200' } });
+  });
+
   test('[REQ-UI-005][REQ-UI-006] Home shows the phase and the next heat; round preview with regenerate before saving', async () => {
     await page.goto(url());
     await expect(page.locator('.phasebar')).toBeVisible();
-    await page.click('[data-testid=generate-round]');
+    await openRoundPreview(page);
     await expect(page.locator('[data-testid=save-round]')).toBeVisible();
     expect((await state(page)).rounds).toHaveLength(0);
     const firstPreview = await page.locator('.preview-grid').first().textContent();

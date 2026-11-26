@@ -59,3 +59,13 @@ export function checkSignUp(raw: unknown): CheckedSignUp {
 
 /** Same comparison as the app's "name taken": case-insensitive, spaces collapsed. */
 export const nameKey = (name: string) => cleanText(name).toLocaleLowerCase();
+
+/**
+ * The text of a QR code that joins a Wi-Fi network (understood by the cameras of
+ * iPhones and Android phones): WIFI:T:WPA;S:<ssid>;P:<password>;;
+ * with \ ; , : " escaped by a backslash.
+ */
+export function wifiQrText(ssid: string, password: string): string {
+  const esc = (v: string) => v.replace(/([\;,:"])/g, '\\$1');
+  return password ? `WIFI:T:WPA;S:${esc(ssid)};P:${esc(password)};;` : `WIFI:T:nopass;S:${esc(ssid)};;`;
+}

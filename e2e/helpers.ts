@@ -72,16 +72,18 @@ export interface SetupOptions {
 }
 
 /**
- * Create a tournament through the wizard. Without options it is a Classic
- * tournament with per-race entry (the version 1 defaults the older specs expect).
+ * Create a tournament (name only, sign-up opens), then set the options in
+ * Settings. Without options it is a Classic tournament with per-race entry
+ * (the version 1 defaults the older specs expect).
  */
 export async function setupTournament(page: Page, url: Url, o: SetupOptions) {
   const format = o.format ?? 'classic';
   await page.goto(url());
   await page.click('[data-testid=new-tournament]');
   await page.fill('[data-testid=setup-name]', o.name);
-  await page.click('[data-testid=wizard-next]');
-  if (o.players) await page.locator('[data-testid=expected-players]').fill(String(o.players));
+  await page.click('[data-testid=create-tournament]');
+  await expect(page.locator('[data-testid=generate-round]')).toBeVisible();
+  await page.goto(url('settings'));
   await page.click(`[data-testid=heat-size-${o.max ?? 8}]`);
   await page.click(`[data-testid=format-${format}]`);
   if (format === 'classic' && o.lastChance) {
@@ -89,11 +91,19 @@ export async function setupTournament(page: Page, url: Url, o: SetupOptions) {
     await page.click('[data-testid=wc-1]');
   }
   if (format === 'knockout' && (o.fill || o.lastChance)) await page.click(`[data-testid=fill-${o.fill ?? 'last-chance'}]`);
-  await page.click('[data-testid=wizard-next]');
   await page.click(`[data-testid=entry-${o.entry ?? (format === 'classic' ? 'per-race' : 'totals')}]`);
-  await page.click('[data-testid=wizard-next]');
-  await page.click('[data-testid=create-tournament]');
+  await expect(page.locator('[data-testid=save-settings]')).toBeEnabled();
+  await page.click('[data-testid=save-settings]');
+  await page.goto(url('players'));
   await expect(page.locator('.players')).toBeVisible();
+}
+
+/** Open the next round's preview; for round 1 this goes through "Start racing". */
+export async function openRoundPreview(page: Page) {
+  await page.click('[data-testid=generate-round]');
+  const first = page.locator('[data-testid=start-continue], [data-testid=save-round], .modal .notice').first();
+  await first.waitFor();
+  if (await page.locator('[data-testid=start-continue]').count()) await page.click('[data-testid=start-continue]');
 }
 
 export async function quickAdd(page: Page, url: Url, names: string[], checkIn = true) {
@@ -115,8 +125,8 @@ export async function kioskRegister(page: Page, url: Url, name: string) {
 
 export async function generateRound(page: Page, url: Url) {
   await page.goto(url());
-  await page.click('[data-testid=generate-round]');
-  await page.click('[data-testid=regenerate]');
+  await openRoundPreview(page);
+  if (await page.locator('[data-testid=regenerate]').count()) await page.click('[data-testid=regenerate]');
   await page.click('[data-testid=save-round]');
   await expect(page.locator('[data-testid=now-title]')).toBeVisible();
 }

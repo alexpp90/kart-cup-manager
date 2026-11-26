@@ -3,6 +3,9 @@ import { HeatCard } from '../components/HeatCard';
 import { IconPlus } from '../components/Icons';
 import { RoundPreview } from '../components/RoundPreview';
 import { SuddenDeathCard } from '../components/SuddenDeath';
+import { RaceChip, RaceFields } from '../components/RaceFields';
+import { Modal } from '../components/Dialogs';
+import type { RaceSetup } from '../engine/types';
 import { canGenerateRound, luckyLosers, roundComplete, roundOutcome } from '../engine/tournament';
 import { names, nextRoundLabel, roundLabel } from '../lib/labels';
 import { go } from '../lib/router';
@@ -14,6 +17,7 @@ export function Rounds({ roundIndex }: { roundIndex?: number }) {
   const tour = useApp((s) => s.t)!;
   const dispatch = useApp((s) => s.dispatch);
   const [preview, setPreview] = useState(false);
+  const [editRace, setEditRace] = useState(false);
   const idx = roundIndex !== undefined && tour.rounds[roundIndex] ? roundIndex : tour.rounds.length - 1;
   const round = tour.rounds[idx];
   const blocked = canGenerateRound(tour);
@@ -62,6 +66,15 @@ export function Rounds({ roundIndex }: { roundIndex?: number }) {
         </div>
       ) : (
         <>
+          <div className="round-race">
+            <RaceChip race={round.race ?? { kind: tour.settings.racesPerHeat === 4 ? 'gp' : 'vs', races: tour.settings.racesPerHeat, cc: tour.settings.race.cc }} />
+            {!round.heats.some((h) => h.result) && !round.lastChance?.result && (
+              <button className="btn btn-sm btn-white" onClick={() => setEditRace(true)} data-testid="change-race">
+                {t('rounds.raceChange')}
+              </button>
+            )}
+          </div>
+          {editRace && <ChangeRace roundId={round.id} initial={round.race ?? tour.settings.race} onClose={() => setEditRace(false)} />}
           <p className="muted">{t('rounds.progress', { done: round.heats.filter((h) => h.result).length, total: round.heats.length })}{format === 'knockout' && !round.final && <> · {t('ko.advanceChip', { x: round.advance ?? 1 })} · {t(`fill.${round.fill ?? tour.settings.fill}`)}</>}</p>
           {round.byes.length > 0 && <p className="notice">{t(tour.settings.format === 'knockout' ? 'ko.byes' : 'heat.byes', { names: names(tour, round.byes) })}</p>}
           {outcome?.status === 'tie' && idx === tour.rounds.length - 1 && <SuddenDeathCard tie={outcome.tie} body={t('ko.tieBody', { names: names(tour, outcome.tie) })} />}
@@ -81,5 +94,36 @@ export function Rounds({ roundIndex }: { roundIndex?: number }) {
       )}
       {preview && <RoundPreview onClose={() => setPreview(false)} />}
     </div>
+  );
+}
+
+function ChangeRace({ roundId, initial, onClose }: { roundId: string; initial: RaceSetup; onClose: () => void }) {
+  const t = useT();
+  const dispatch = useApp((s) => s.dispatch);
+  const [race, setRace] = useState<RaceSetup>(initial);
+  return (
+    <Modal
+      title={t('rounds.raceTitle')}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn btn-white" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            className="btn btn-green"
+            onClick={() => {
+              dispatch({ type: 'setRoundRace', roundId, race });
+              onClose();
+            }}
+            data-testid="save-race"
+          >
+            {t('common.save')}
+          </button>
+        </>
+      }
+    >
+      <RaceFields race={race} onChange={setRace} name="round-race" />
+    </Modal>
   );
 }

@@ -74,11 +74,8 @@ test('[REQ-DATA-006] storage blocked: the app works in memory, says so and can e
   await page.goto(url());
   await expect(page.locator('[data-testid=storage-unavailable]')).toBeVisible();
   await page.click('[data-testid=new-tournament]');
-  await page.click('[data-testid=wizard-next]');
-  await page.click('[data-testid=wizard-next]');
-  await page.click('[data-testid=wizard-next]');
   await page.click('[data-testid=create-tournament]');
-  await expect(page.locator('.players')).toBeVisible();
+  await expect(page.locator('[data-testid=generate-round]')).toBeVisible();
   await expect(page.locator('[data-testid=storage-unavailable]')).toBeVisible();
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=storage-unavailable] button')]);
   expect(dl.suggestedFilename()).toMatch(/backup\.json$/);

@@ -47,7 +47,7 @@ export type PlanSettings = Pick<
   Settings,
   | 'format'
   | 'heatSize'
-  | 'racesPerHeat'
+  | 'race'
   | 'qualRounds'
   | 'finalsFormat'
   | 'customStages'
@@ -65,8 +65,9 @@ export type PlanSettings = Pick<
 /** Plans longer than this get a warning even without a time budget. */
 export const LONG_MINUTES = 180;
 
-export function minutesPerHeat(s: Pick<Settings, 'racesPerHeat' | 'minutesPerRace' | 'cupOverheadMinutes' | 'changeoverMinutes'>): number {
-  return s.racesPerHeat * s.minutesPerRace + s.cupOverheadMinutes + s.changeoverMinutes;
+/** Minutes for one heat raced with `race` (default: the next round's setup). */
+export function minutesPerHeat(s: Pick<Settings, 'race' | 'minutesPerRace' | 'cupOverheadMinutes' | 'changeoverMinutes'>, races = s.race.races): number {
+  return races * s.minutesPerRace + s.cupOverheadMinutes + s.changeoverMinutes;
 }
 
 /** League while everyone fits into one heat, knockout cups otherwise. */

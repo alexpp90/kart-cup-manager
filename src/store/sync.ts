@@ -5,7 +5,7 @@ import type { Tournament } from '../engine/types';
 import type { Lang } from '../i18n';
 import { parsePersisted, PREFS_KEY, STORAGE_KEY } from './persist';
 import { useApp } from './store';
-import { joinUrl, usePhone } from '../lib/server';
+import { joinUrl, usePhone, wifiQr } from '../lib/server';
 
 const CHANNEL = 'kart-cup-manager';
 
@@ -15,6 +15,8 @@ export interface SyncMessage {
   lang: Lang;
   /** Phone sign-up link while a session runs (the TV shows its QR code). */
   join?: string | null;
+  /** QR text that joins the Pi's own Wi-Fi (with its name for the caption). */
+  wifi?: { qr: string; ssid: string; password: string } | null;
 }
 
 export function startBroadcast(): () => void {
@@ -23,7 +25,9 @@ export function startBroadcast(): () => void {
   const send = () => {
     const s = useApp.getState();
     const phone = usePhone.getState().session;
-    ch.postMessage({ type: 'state', t: s.t, lang: s.prefs.lang, join: phone ? joinUrl(phone) : null } satisfies SyncMessage);
+    const info = usePhone.getState().info;
+    const qr = wifiQr(info);
+    ch.postMessage({ type: 'state', t: s.t, lang: s.prefs.lang, join: phone ? joinUrl(phone) : null, wifi: phone && qr && info?.wifi ? { qr, ssid: info.wifi.ssid, password: info.wifi.password } : null } satisfies SyncMessage);
   };
   ch.onmessage = (e) => {
     if (e.data?.type === 'hello') send();
@@ -32,7 +36,7 @@ export function startBroadcast(): () => void {
     if (s.t !== prev.t || s.prefs.lang !== prev.prefs.lang) send();
   });
   const unsubPhone = usePhone.subscribe((s, prev) => {
-    if (s.session !== prev.session) send();
+    if (s.session !== prev.session || s.info !== prev.info) send();
   });
   return () => {
     unsub();

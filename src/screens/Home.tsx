@@ -6,9 +6,12 @@ import { Flag, IconDownload, IconList, IconTablet, IconTv, ItemBox, Trophy } fro
 import { LateJoiners } from '../components/LateJoiners';
 import { RoundPreview } from '../components/RoundPreview';
 import { SuddenDeathCard } from '../components/SuddenDeath';
-import { makePlan } from '../engine/plan';
+import { PhoneSignupCard } from '../components/PhoneSignup';
+import { RaceChip } from '../components/RaceFields';
+import { StartRacing } from '../components/StartRacing';
+import type { RaceSetup } from '../engine/types';
 import { estimateRemaining } from '../engine/timing';
-import { bySeat, seatsOf, canGenerateRound, currentRound, finalResults, finalsHeats, knockoutTable, leagueTable, leagueTie, phaseOf, roundCandidates, roundComplete, roundHeats, roundOutcome, standings, upcoming } from '../engine/tournament';
+import { bySeat, raceOf, seatsOf, canGenerateRound, currentRound, finalResults, finalsHeats, knockoutTable, leagueTable, leagueTie, phaseOf, roundCandidates, roundComplete, roundHeats, roundOutcome, standings, upcoming } from '../engine/tournament';
 import type { Heat, Tournament } from '../engine/types';
 import { exportBackup } from '../lib/actions';
 import { clockTime, formatDuration, heatTitle, names, nextRoundLabel, roundLabel } from '../lib/labels';
@@ -24,6 +27,8 @@ export function Home() {
   const t = useT();
   const tour = useApp((s) => s.t)!;
   const [preview, setPreview] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [race, setRace] = useState<RaceSetup | undefined>(undefined);
   const phase = phaseOf(tour);
   const queue = upcoming(tour);
   const [now, next, ready] = queue;
@@ -63,6 +68,7 @@ export function Home() {
           })}
         </div>
         <div className="now-bottom">
+          <RaceChip race={raceOf(tour, now.id)} />
           <HeatCup tour={tour} heat={now} />
           <button className="btn btn-red btn-xl" onClick={() => go(`heat/${now.id}`)} data-testid="home-enter">
             {t('home.enterResults')}
@@ -77,10 +83,10 @@ export function Home() {
           <ItemBox size={96} className="bob" />
           <div>
             <div className="now-title">{t('home.registrationBody', { n: tour.players.length, c: candidates.length })}</div>
-            {candidates.length < (format === 'classic' ? 3 : 2) && <p className="muted">{t(format === 'classic' ? 'home.needPlayers' : 'home.needPlayers2')}</p>}
+            {candidates.length < 2 && <p className="muted">{t('home.needPlayers2')}</p>}
             <div className="btn-row">
-              <button className="btn btn-red btn-xl" disabled={candidates.length < (format === 'classic' ? 3 : 2)} onClick={() => setPreview(true)} data-testid="generate-round">
-                {nextRoundLabel(t, tour)}
+              <button className="btn btn-red btn-xl" disabled={candidates.length < 2} onClick={() => setStarting(true)} data-testid="generate-round">
+                {t('start.title')}
               </button>
               <button className="btn btn-sky btn-lg" onClick={() => go('join')}>
                 <IconTablet /> {t('home.openKiosk')}
@@ -163,6 +169,8 @@ export function Home() {
               <QueueCard title={t('home.upNext')} heat={next} tour={tour} tone="blue" />
               <QueueCard title={t('home.getReady')} heat={ready} tour={tour} tone="navy" />
             </>
+          ) : phase === 'registration' ? (
+            <PhoneSignupCard />
           ) : (
             <TopFive tour={tour} />
           )}
@@ -202,7 +210,17 @@ export function Home() {
           <IconDownload /> {t('settings.export')}
         </button>
       </div>
-      {preview && <RoundPreview onClose={() => setPreview(false)} />}
+      {starting && (
+        <StartRacing
+          onClose={() => setStarting(false)}
+          onContinue={(r) => {
+            setStarting(false);
+            setRace(r);
+            setPreview(true);
+          }}
+        />
+      )}
+      {preview && <RoundPreview race={race} onClose={() => { setPreview(false); setRace(undefined); }} />}
     </div>
   );
 }
@@ -214,18 +232,9 @@ export function TimeLine({ tour, big }: { tour: Tournament; big?: boolean }) {
   const est = estimateRemaining(tour, Date.now());
   if (!est.heatsLeft) return null;
   const perHeat = formatDuration(t, est.perHeat);
-  const live = makePlan(roundCandidates(tour).length, tour.settings);
-  const setup = makePlan(tour.settings.expectedPlayers, tour.settings);
-  const diff = live.minutes - setup.minutes;
   return (
     <p className={big ? 'big-time' : 'time-line muted'} data-testid="time-line">
       {est.measured ? t('time.measured', { m: perHeat, n: est.measured }) : t('time.guess', { m: perHeat })} · {t('time.heatsLeft', { n: est.heatsLeft })} · {t('time.ends', { time: clockTime(est.endsAt, lang) })}
-      {!big && !tour.rounds.length && live.columns.length > 0 && diff !== 0 && (
-        <span className={diff > 0 ? 'plan-diff plan-diff-up' : 'plan-diff'} data-testid="plan-diff">
-          {' · '}
-          {t('plan.vsSetup', { n: roundCandidates(tour).length, e: tour.settings.expectedPlayers, d: `${diff > 0 ? '+' : '−'}${formatDuration(t, Math.abs(diff))}` })}
-        </span>
-      )}
     </p>
   );
 }

@@ -5,7 +5,7 @@ import { HeatCup } from '../components/Cup';
 import { IconDown, IconUp } from '../components/Icons';
 import { TapOrder } from '../components/TapOrder';
 import { orderFromTotals, perRaceTotals, totalsTieGroups, validateResult, type ValidationError } from '../engine/points';
-import { bySeat, heatInfo, seatsOf, tableFor } from '../engine/tournament';
+import { bySeat, heatInfo, racesOf, seatsOf, tableFor } from '../engine/tournament';
 import type { EntryMode, HeatResult, Player } from '../engine/types';
 import { heatTitle, names } from '../lib/labels';
 import { go } from '../lib/router';
@@ -45,7 +45,7 @@ export function ResultEntry({ heatId }: { heatId: string }) {
   const dispatch = useApp((s) => s.dispatch);
   const info = heatInfo(tour, heatId);
   const heat = info?.heat;
-  const races = tour.settings.racesPerHeat;
+  const races = racesOf(tour, heatId);
 
   const initial = useMemo<Draft>(() => {
     const saved = loadDraft(heatId);
