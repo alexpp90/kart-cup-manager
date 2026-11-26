@@ -7,6 +7,7 @@ import { prefersReducedMotion, sound } from '../lib/sound';
 import { useApp, useT } from '../store/store';
 import { Modal } from './Dialogs';
 import { IconShuffle } from './Icons';
+import { CupGlyph, Glyph } from './Glyphs';
 
 const cupById = (id: string) => CUPS.find((c) => c.id === id);
 const trackName = (id: string) => {
@@ -26,8 +27,8 @@ export function CupEmblem({ cup, size = 56 }: { cup: Cup; size?: number }) {
         <path d="M16 15h10" stroke="#fff" strokeOpacity=".6" strokeWidth="4" strokeLinecap="round" />
         {cup.booster && <circle cx="51" cy="13" r="7" fill="#FFC81E" stroke="#14213D" strokeWidth="3" />}
       </svg>
-      <span className="cup-glyph" style={{ fontSize: size * 0.4 }}>
-        {cup.glyph}
+      <span className="cup-glyph">
+        <CupGlyph id={cup.id} size={Math.round(size * 0.5)} />
       </span>
     </span>
   );
@@ -51,7 +52,7 @@ export function CupInfo({ pick, compact }: { pick: CupPick; compact?: boolean })
   return (
     <div className={`cup-info ${compact ? 'cup-compact' : ''}`}>
       <span className="cup-emblem cup-emblem-tracks" aria-hidden="true">
-        🏁
+        <Glyph name="flag" size={compact ? 30 : 44} />
       </span>
       <div>
         <strong className="cup-name">{t('heat.tracks')}</strong>
@@ -63,7 +64,8 @@ export function CupInfo({ pick, compact }: { pick: CupPick; compact?: boolean })
 
 interface ReelItem {
   key: string;
-  glyph: string;
+  /** The cup whose emblem symbol is shown. */
+  cupId: string;
   title: string;
 }
 
@@ -71,12 +73,12 @@ function reelItems(pick: CupPick, boosterPass: boolean): { pool: ReelItem[]; fin
   const cups = cupPool(CUPS, boosterPass);
   if (pick.kind === 'cup') {
     const c = cupById(pick.cupId)!;
-    return { pool: cups.map((x) => ({ key: x.id, glyph: x.glyph, title: x.name })), finals: [{ key: c.id, glyph: c.glyph, title: c.name }] };
+    return { pool: cups.map((x) => ({ key: x.id, cupId: x.id, title: x.name })), finals: [{ key: c.id, cupId: c.id, title: c.name }] };
   }
   const tracks = trackPool(cups);
   return {
-    pool: tracks.map((x) => ({ key: x.id, glyph: cupById(x.cupId)!.glyph, title: x.name })),
-    finals: pick.trackIds.map((id) => ({ key: id, glyph: cupById(id.split(':')[0])!.glyph, title: trackName(id) })),
+    pool: tracks.map((x) => ({ key: x.id, cupId: x.cupId, title: x.name })),
+    finals: pick.trackIds.map((id) => ({ key: id, cupId: id.split(':')[0], title: trackName(id) })),
   };
 }
 
@@ -135,7 +137,9 @@ export function Roulette({ pick, boosterPass, onDone, big }: { pick: CupPick; bo
     <div className={`roulette ${big ? 'roulette-big' : ''}`}>
       <div className={`reel ${spinning ? 'reel-spinning' : 'reel-landed'}`} aria-live="polite">
         <span key={shown.key + slot + landed.length} className="reel-item">
-          <span className="reel-glyph">{spinning ? shown.glyph : (landed[landed.length - 1] ?? shown).glyph}</span>
+          <span className="reel-glyph">
+            <CupGlyph id={(spinning ? shown : (landed[landed.length - 1] ?? shown)).cupId} size={big ? 96 : 56} />
+          </span>
           <span className="reel-title">{spinning ? shown.title : (landed[landed.length - 1] ?? shown).title}</span>
         </span>
       </div>
@@ -143,7 +147,13 @@ export function Roulette({ pick, boosterPass, onDone, big }: { pick: CupPick; bo
         <ol className="reel-landed-list">
           {finals.map((f, i) => (
             <li key={f.key} className={i < landed.length ? 'on' : ''}>
-              {i < landed.length ? `${f.glyph} ${f.title}` : '…'}
+              {i < landed.length ? (
+                <>
+                  <CupGlyph id={f.cupId} size={22} /> {f.title}
+                </>
+              ) : (
+                '…'
+              )}
             </li>
           ))}
         </ol>

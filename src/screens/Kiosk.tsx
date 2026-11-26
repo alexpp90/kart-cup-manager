@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Coin, Flag, ItemBox, Star } from '../components/Icons';
+import { Glyph } from '../components/Glyphs';
 import { newDraft, PlayerForm, type PlayerDraft } from '../components/PlayerForm';
 import { finalsReachForNewPlayer, isNameTaken, registrationOpen } from '../engine/tournament';
 import { go } from '../lib/router';
@@ -72,7 +73,7 @@ export function Kiosk() {
               {draft.tag && <div className="license-tag">{draft.tag}</div>}
             </div>
             <button type="submit" className="btn btn-red btn-xl btn-block kiosk-submit" data-testid="kiosk-submit">
-              {t('kiosk.submit')} 🏁
+              {t('kiosk.submit')} <Glyph name="flag" size={28} />
             </button>
             <p className="kiosk-count">{t('kiosk.count', { n: count })}</p>
           </aside>

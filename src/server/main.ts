@@ -6,7 +6,7 @@
 //   HOST_NAME (e.g. kartcup.lan: join links use it), WIFI_SSID + WIFI_PASSWORD
 //   (the Pi's own Wi-Fi, shown as a QR code), CAPTIVE=1 (send phones' connection
 //   checks and other hosts to the sign-up page).
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import path from 'node:path';
@@ -24,17 +24,29 @@ const addresses = () =>
     .filter((a): a is NonNullable<typeof a> => !!a && a.family === 'IPv4' && !a.internal)
     .map((a) => `http://${a.address}:${port}`);
 
-let html: string;
-try {
-  html = readFileSync(htmlPath, 'utf8');
-} catch {
+// index.html is read again when it changes, so an update needs no restart.
+let html = '';
+let htmlMtime = 0;
+const currentHtml = () => {
+  try {
+    const m = statSync(htmlPath).mtimeMs;
+    if (m !== htmlMtime) {
+      html = readFileSync(htmlPath, 'utf8');
+      htmlMtime = m;
+    }
+  } catch {
+    /* keep the last good copy */
+  }
+  return html;
+};
+if (!currentHtml()) {
   console.error(`Kart Cup server: cannot read ${htmlPath}. Put index.html next to server.mjs or set APP_HTML.`);
   process.exit(1);
 }
 
 const app = createApp({
   dataDir: process.env.DATA_DIR ?? path.join(here, 'kart-cup-data'),
-  html,
+  html: currentHtml,
   port,
   publicUrl: process.env.PUBLIC_URL || undefined,
   maxSessionHours: Number(process.env.MAX_SESSION_HOURS ?? 72),

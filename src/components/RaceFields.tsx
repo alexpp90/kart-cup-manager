@@ -4,6 +4,7 @@ import type { EngineClass, RaceSetup } from '../engine/types';
 import type { Key, Params } from '../i18n';
 import { useT } from '../store/store';
 import { ChoiceCards, Stepper } from './Bits';
+import { Glyph } from './Glyphs';
 
 type T = (key: Key, params?: Params) => string;
 
@@ -17,7 +18,7 @@ export function RaceChip({ race }: { race: RaceSetup }) {
   const t = useT();
   return (
     <span className="chip race-chip" data-testid="race-chip">
-      {race.kind === 'gp' ? '🏆' : '🏁'} {raceText(t, race)}
+      <Glyph name={race.kind === 'gp' ? 'trophy' : 'flag'} size={18} /> {raceText(t, race)}
     </span>
   );
 }
@@ -31,8 +32,8 @@ export function RaceFields({ race, onChange, name = 'race' }: { race: RaceSetup;
         value={race.kind}
         onChange={(kind) => onChange(kind === 'gp' ? { ...race, kind, races: 4 } : { ...race, kind, races: race.kind === 'vs' ? race.races : 4 })}
         options={[
-          { value: 'gp', label: t('race.gp'), hint: t('race.gpHint'), icon: '🏆' },
-          { value: 'vs', label: t('race.vs'), hint: t('race.vsHint'), icon: '🏁' },
+          { value: 'gp', label: t('race.gp'), hint: t('race.gpHint'), icon: <Glyph name="trophy" size={30} /> },
+          { value: 'vs', label: t('race.vs'), hint: t('race.vsHint'), icon: <Glyph name="flag" size={30} /> },
         ]}
       />
       <div className="form-grid form-grid-tight">

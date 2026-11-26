@@ -65,7 +65,7 @@ export function HeatCard({ tour, heat, siblings = [], controls = true, advance, 
                 )}
               </span>
               {r.place > 0 && <span className="heat-points">{r.points}</span>}
-              {adv && <span className="adv-flag" title={t('finals.advances')}>➜</span>}
+              {adv && <span className="adv-flag" title={t('finals.advances')}>→</span>}
               {controls && status !== 'done' && siblings.length > 1 && !heat.result && (
                 <button className="icon-btn icon-btn-sm" onClick={() => setMoving(moving === r.id ? null : r.id)} aria-label={t('heat.movePlayer', { name: p.name })} aria-expanded={moving === r.id}>
                   <IconMove size={16} />

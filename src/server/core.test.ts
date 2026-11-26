@@ -241,3 +241,15 @@ describe('[REQ-HOST-007][REQ-HOST-008] the Pi\'s own Wi-Fi: captive sign-up, nam
     expect((await plain.call('GET', '/', { host: 'example.org' })).status).toBe(200);
   });
 });
+
+describe('[REQ-HOST-012] updates without a restart', () => {
+  it('[REQ-HOST-012] a new index.html is served at once', async () => {
+    let html = '<html><head></head><body>v1</body></html>';
+    const { call } = await start(undefined, { html: () => html });
+    expect((await call('GET', '/')).text).toContain('v1');
+    html = '<html><head></head><body>v2</body></html>';
+    const r = await call('GET', '/');
+    expect(r.text).toContain('v2');
+    expect(r.text).toContain('kart-cup-server');
+  });
+});

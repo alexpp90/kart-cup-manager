@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, ChoiceCards, Toggle } from '../components/Bits';
 import { IconDownload, IconUpload } from '../components/Icons';
+import { Glyph } from '../components/Glyphs';
 import { FormatFields, PlanCard, ScoringFields, TimingFields } from '../components/Planner';
 import { roundCandidates } from '../engine/tournament';
 import type { Settings, TrackMode } from '../engine/types';
@@ -39,7 +40,7 @@ export function SettingsScreen() {
       <div className="page-head">
         <h1 className="display page-title">{t('settings.title')}</h1>
         <span className="muted" data-testid="storage-origin">
-          💾 {t('settings.storage')} · {t('settings.origin', { origin: location.protocol === 'file:' ? 'file://' : location.origin })}
+          <Glyph name="disk" size={16} /> {t('settings.storage')} · {t('settings.origin', { origin: location.protocol === 'file:' ? 'file://' : location.origin })}
         </span>
       </div>
       <div className="settings-grid">

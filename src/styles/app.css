@@ -2801,7 +2801,7 @@ body.hide-cursor * {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.8vh 0.8vw;
   font-weight: 900;
   font-size: 1em;
@@ -3590,8 +3590,11 @@ body.hide-cursor * {
   font-size: 1.2em;
 }
 .choices:has(input[name$='-cc']) {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   gap: 6px;
+}
+.choices:has(input[name$='-cc']) .choice-label {
+  white-space: nowrap;
 }
 .choices:has(input[name$='-cc']) .choice {
   padding: 8px 4px;
@@ -3764,4 +3767,37 @@ body.hide-cursor * {
 .qr-overlay .join-qrs-big figcaption {
   font-size: 0.7em;
   max-width: 30vw;
+}
+/* Drawn icons (no emoji font needed) */
+.glyph,
+.cup-glyph-svg {
+  display: inline-block;
+  vertical-align: -0.2em;
+  flex-shrink: 0;
+}
+.cup-glyph {
+  display: inline-grid;
+  place-items: center;
+}
+.reel-glyph {
+  display: inline-grid;
+  place-items: center;
+}
+.step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.85em;
+  vertical-align: 0.05em;
+}
+
+.big-queue li {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

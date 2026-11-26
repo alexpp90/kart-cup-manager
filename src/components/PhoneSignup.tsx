@@ -6,6 +6,7 @@ import { useApp, useT } from '../store/store';
 import { confirmDialog } from '../store/ui';
 import { Card } from './Bits';
 import { JoinQrs } from './JoinQrs';
+import { Glyph } from './Glyphs';
 
 export function PhoneSignupCard() {
   const t = useT();
@@ -25,7 +26,7 @@ export function PhoneSignupCard() {
       <Card title={t('phone.title')} tone="navy" className="phone-card">
         <p className="muted">{t('phone.intro')}</p>
         <button className="btn btn-sky" onClick={() => void startPhoneSignUp()} disabled={status === 'starting'} data-testid="phone-start">
-          📱 {t('phone.start')}
+          <Glyph name="phone" size={20} /> {t('phone.start')}
         </button>
       </Card>
     );
@@ -46,7 +47,7 @@ export function PhoneSignupCard() {
           <code className="phone-url" data-testid="phone-url">{url}</code>
           {!open && <p className="notice notice-warn">{t('phone.closedNow')}</p>}
           <button className="btn btn-gold" onClick={() => setBig(true)} data-testid="phone-show-qr">
-            🔍 {t('phone.showQr')}
+            <Glyph name="zoom" size={20} /> {t('phone.showQr')}
           </button>
           <p className="muted">{t('phone.tvHint')}</p>
           <button

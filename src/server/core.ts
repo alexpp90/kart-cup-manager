@@ -15,8 +15,8 @@ import { checkSignUp, CODE_ALPHABET, CODE_LENGTH, isCode, MAX_PLAYERS, nameKey }
 
 export interface ServerOptions {
   dataDir: string;
-  /** The app's index.html (read once at start). */
-  html: string;
+  /** The app's index.html, or a function that returns the current one (picked up without a restart). */
+  html: string | (() => string);
   port: number;
   now?: () => number;
   maxSessionHours?: number;
@@ -128,7 +128,16 @@ export function createApp(opts: ServerOptions) {
   const maxSessions = opts.maxSessions ?? 20;
   const dir = path.join(opts.dataDir, 'sessions');
   mkdirSync(dir, { recursive: true });
-  const page = injectMarker(opts.html);
+  let lastHtml = '';
+  let page = '';
+  const currentPage = () => {
+    const html = typeof opts.html === 'function' ? opts.html() : opts.html;
+    if (html !== lastHtml) {
+      lastHtml = html;
+      page = injectMarker(html);
+    }
+    return page;
+  };
   const sessions = new Map<string, Session>();
   const writes = new Map<string, Promise<void>>();
 
@@ -265,7 +274,7 @@ export function createApp(opts: ServerOptions) {
     // ---- the app
     if ((method === 'GET' || method === 'HEAD') && (url.pathname === '/' || url.pathname === '/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', 'Content-Security-Policy': CSP, ...SECURITY_HEADERS });
-      res.end(method === 'HEAD' ? undefined : page);
+      res.end(method === 'HEAD' ? undefined : currentPage());
       return;
     }
     if (parts[0] !== 'api') return fail(res, 404, 'not-found');

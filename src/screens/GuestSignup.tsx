@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Flag, ItemBox } from '../components/Icons';
+import { Glyph } from '../components/Glyphs';
 import { PlayerForm, type PlayerDraft } from '../components/PlayerForm';
 import { JoinQrs } from '../components/JoinQrs';
 import { COLORS } from '../data/colors';
@@ -57,7 +58,7 @@ function GuestForm({ code, via, onDone }: { code: string; via: 'phone' | 'desk';
         </p>
       )}
       <button type="submit" className="btn btn-red btn-xl btn-block" disabled={sending} data-testid="guest-submit">
-        {t('kiosk.submit')} 🏁
+        {t('kiosk.submit')} <Glyph name="flag" size={28} />
       </button>
     </form>
   );

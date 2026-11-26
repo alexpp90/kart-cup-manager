@@ -10,6 +10,7 @@ import type { Key, Params } from '../i18n';
 import { formatDuration, stageName } from '../lib/labels';
 import { useT } from '../store/store';
 import { Card, ChoiceCards, Stepper, Toggle } from './Bits';
+import { Glyph } from './Glyphs';
 
 type T = (key: Key, params?: Params) => string;
 type Patch = (p: Partial<Settings>) => void;
@@ -228,7 +229,7 @@ export function FormatFields({ s, patch, players, locked, onFormatPicked }: { s:
                 </>
               ),
               hint: t(`format.${f}Hint`),
-              icon: { league: '🏆', knockout: '⚔️', classic: '📊' }[f],
+              icon: <Glyph name={({ league: 'trophy', knockout: 'swords', classic: 'chart' } as const)[f]} size={30} />,
             }))}
         />
       </div>
@@ -329,9 +330,9 @@ export function ScoringFields({ s, patch }: { s: Settings; patch: Patch }) {
           value={s.entryMode}
           onChange={(v) => patch({ entryMode: v })}
           options={[
-            { value: 'totals', label: t('setup.entryTotals'), hint: t('setup.entryTotalsHint'), icon: '🔢' },
-            { value: 'ranking', label: t('setup.entryRanking'), hint: t('setup.entryRankingHint'), icon: '🏁' },
-            { value: 'per-race', label: t('setup.entryPerRace'), hint: t('setup.entryPerRaceHint'), icon: '👆' },
+            { value: 'totals', label: t('setup.entryTotals'), hint: t('setup.entryTotalsHint'), icon: <Glyph name="numbers" size={30} /> },
+            { value: 'ranking', label: t('setup.entryRanking'), hint: t('setup.entryRankingHint'), icon: <Glyph name="flag" size={30} /> },
+            { value: 'per-race', label: t('setup.entryPerRace'), hint: t('setup.entryPerRaceHint'), icon: <Glyph name="tap" size={30} /> },
           ]}
         />
       </div>

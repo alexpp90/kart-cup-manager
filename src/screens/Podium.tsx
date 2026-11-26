@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../components/Bits';
 import { Confetti } from '../components/Confetti';
+import { Glyph } from '../components/Glyphs';
 import { PodiumStage } from '../components/PodiumStage';
 import { finalResults } from '../engine/tournament';
 import { sound } from '../lib/sound';
@@ -30,7 +31,7 @@ export function Podium() {
       <PodiumStage tour={tour} rows={rows} />
       <div className="center">
         <button className="btn btn-gold btn-lg" onClick={() => setBurst(burst + 1)} data-testid="confetti-again">
-          🎉 {t('podium.replay')}
+          <Glyph name="party" size={22} /> {t('podium.replay')}
         </button>
       </div>
       <h2 className="display section-title">{t('podium.final')}</h2>

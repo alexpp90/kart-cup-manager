@@ -21,7 +21,9 @@ export function JoinQrs({ join, wifi, ssid, password, size = 180, variant = 'car
       <figure className="join-qr join-qr-wifi">
         <QrCode text={wifi} size={size} label={t('wifi.qrLabel', { ssid: ssid ?? '' })} />
         <figcaption>
-          <b>{t('wifi.scan')}</b>
+          <b>
+            <span className="step-num">1</span> {t('wifi.scan')}
+          </b>
           <span>{t('wifi.scanHint', { ssid: ssid ?? '' })}</span>
           {password && <small className="wifi-pass" data-testid="wifi-password">{t('wifi.password', { ssid: ssid ?? '', pw: password })}</small>}
         </figcaption>

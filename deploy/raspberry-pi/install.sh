@@ -73,8 +73,10 @@ if [ "$(hostname)" != "$NAME" ]; then
 fi
 
 echo "== Files"
-install -d -m 755 /opt/kart-cup
-install -m 644 "$HERE/index.html" "$HERE/server.mjs" /opt/kart-cup/
+# The app files belong to the Pi user, so an update is a plain copy (no sudo);
+# the server picks up a new index.html by itself.
+install -d -m 755 -o "$USER_NAME" -g "$USER_NAME" /opt/kart-cup
+install -m 644 -o "$USER_NAME" -g "$USER_NAME" "$HERE/index.html" "$HERE/server.mjs" /opt/kart-cup/
 install -d -m 750 -o "$USER_NAME" -g "$USER_NAME" /var/lib/kart-cup
 
 echo "== Settings (/etc/kart-cup/env)"

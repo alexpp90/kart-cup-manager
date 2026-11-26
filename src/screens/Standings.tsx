@@ -6,6 +6,7 @@ import { TieInfo } from '../components/TieInfo';
 import { minHeatsForFinals } from '../engine/ranking';
 import { finalResults, knockoutTable, leagueTable, previousStandings, standings, type KoCell } from '../engine/tournament';
 import { Clover } from '../components/Icons';
+import { Glyph } from '../components/Glyphs';
 import type { Tournament } from '../engine/types';
 import { exportCsv } from '../lib/actions';
 import { useFlip } from '../lib/flip';
@@ -72,7 +73,7 @@ function KoCellView({ cell }: { cell: KoCell | null }) {
   const label = { adv: t('ko.adv'), lucky: t('ko.lucky'), out: t('ko.out'), lc: t('stage.lastChance') }[cell.mark];
   return (
     <span className={`ko-cell ko-${cell.mark}`} title={label}>
-      {cell.place}. <small>{cell.points}</small> {cell.mark === 'adv' ? '✓' : cell.mark === 'lucky' ? '🍀' : cell.mark === 'lc' ? 'LC' : ''}
+      {cell.place}. <small>{cell.points}</small> {cell.mark === 'adv' ? '✓' : cell.mark === 'lucky' ? <Glyph name="clover" size={14} /> : cell.mark === 'lc' ? 'LC' : ''}
     </span>
   );
 }
@@ -130,7 +131,9 @@ export function KnockoutTable({ tour, limit, big }: { tour: Tournament; limit?: 
                 ))}
                 <td>
                   {r.status === 'champion' ? (
-                    <span className="pill pill-q">🏆 {t('ko.champion')}</span>
+                    <span className="pill pill-q">
+                      <Glyph name="trophy" size={14} /> {t('ko.champion')}
+                    </span>
                   ) : r.status === 'in' ? (
                     <span className="pill pill-q">{t('ko.in')}</span>
                   ) : r.status === 'withdrawn' ? (
@@ -275,7 +278,9 @@ export function QualTable({ tour, limit, big }: { tour: Tournament; limit?: [num
             const status = r.withdrawn ? (
               <span className="pill pill-withdrawn">{t('standings.withdrawn')}</span>
             ) : marks.direct.has(r.playerId) ? (
-              <span className="pill pill-q">🏁 {t('standings.q')}</span>
+              <span className="pill pill-q">
+                <Glyph name="flag" size={14} /> {t('standings.q')}
+              </span>
             ) : marks.lastChance.has(r.playerId) ? (
               <span className="pill pill-lc">{t('standings.lc')}</span>
             ) : r.eligible ? (
