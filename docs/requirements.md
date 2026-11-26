@@ -25,7 +25,7 @@ Columns: **ID** · statement · **source** (`Spec` = section of docs/spec.md, `D
 | REQ-ENG-008 | Where possible a player from the previous round's last heat is not in the new first heat (no back-to-back). | Spec: Engine › Pairing; D§4 | should | auto |
 | REQ-ENG-009 | Heats have a play order and a queue; the organizer can swap the order of unplayed heats only. | Spec: Engine › Heat order | must | auto |
 | REQ-ENG-010 | A player can be moved between two unplayed heats of the same round only if every heat stays within 3..max and the size spread does not grow. | Spec: Engine › Heat order; D§5 | must | auto |
-| REQ-ENG-011 | Default points: 8-player heats 15-12-10-8-6-4-2-1, 4-player heats 10-6-3-1; both tables are editable. | Spec: Engine › Points; D§6 | must | auto |
+| REQ-ENG-011 | Replaced by REQ-FMT-011. (Was: default points 8-player heats 15-12-10-8-6-4-2-1, 4-player heats 10-6-3-1; both tables editable.) | Spec: Engine › Points; D§6 | must | auto |
 | REQ-ENG-012 | Heats smaller than the max use the top of the points table. | D§6 | must | auto |
 | REQ-ENG-013 | Per-race entry: the last finisher is filled in automatically; running heat total = sum of race points. | Spec: Engine › Result entry A | must | auto |
 | REQ-ENG-014 | Result validation: no duplicate places, everyone ranked, no unknown players, for both entry modes. | Spec: Engine › Result entry | must | auto |
@@ -54,7 +54,7 @@ Columns: **ID** · statement · **source** (`Spec` = section of docs/spec.md, `D
 | REQ-ENG-037 | Finals can start once the current round is complete (warning if fewer rounds than planned); finals can be cancelled while no finals heat has a result; an extra qualifying round can be added. | D§8 | should | auto |
 | REQ-ENG-038 | Final standings: Grand Final places, then earlier knockouts (later stage first), then Last Chance losers, then the rest in qualifying order. | D§8 | must | auto |
 | REQ-ENG-039 | Cup picker modes none / random cup / random 4 tracks / organizer picks; Booster Course Pass toggles 12 vs 24 cups; no repeats until all are used, derived from heats so undo/edit stay consistent. | Spec: Engine › Track/cup picker; D§9 | must | auto |
-| REQ-ENG-040 | Time estimate = heats × races × minutes per race + changeover per heat. | Spec: Core flow › Setup; D§13 | must | auto |
+| REQ-ENG-040 | Replaced by REQ-PLAN-001. (Was: time estimate = heats × races × minutes per race + changeover per heat.) | Spec: Core flow › Setup; D§13 | must | auto |
 | REQ-ENG-041 | Every active checked-in player sits in exactly one heat per round (or has the documented bye), for any player count 4–64, with late joins/withdrawals/edits. | Spec: Engine; D§3, D§5 (property) | must | auto |
 | REQ-ENG-042 | Heat sizes stay valid (3..max, spread ≤ 1) in every generated round. | Spec: Engine; D§3 (property) | must | auto |
 | REQ-ENG-043 | No withdrawn player appears in any unplayed or future heat. | Spec: Engine › Withdrawal (property) | must | auto |
@@ -64,6 +64,34 @@ Columns: **ID** · statement · **source** (`Spec` = section of docs/spec.md, `D
 | REQ-ENG-047 | CSV export: UTF-8 BOM, comma separated, localized headers, one row per player with rank, played, points, average, wins, best, eligible, status; quotes/commas/emoji in names are escaped. | Spec: Tech; D§10 | must | auto |
 | REQ-ENG-048 | "Load demo data" creates 30 fake racers with round 1 simulated. | Spec: Screens › Settings; D§13 | should | auto |
 | REQ-ENG-049 | Engine functions are pure: they never mutate their input tournament. | Spec: Tech; D§1 | must | auto |
+
+## Formats, planner and timing (REQ-FMT, REQ-PLAN, REQ-TIME, REQ-ARCH)
+
+Added with the v2 work (plan in `docs/plan-v2.md`, rules in DECISIONS §15). "S" is the heat size.
+
+| ID | Requirement | Source | Prio | Kind |
+|---|---|---|---|---|
+| REQ-FMT-001 | Heat size S is 2–8 (number of controllers); one heat is one cup of 4 races. Heat size and format are locked once the first round exists. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-002 | The suggested format is League when everyone fits into one heat (n ≤ S) and Knockout cups otherwise; Classic stays available for S ≥ 3. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-003 | League: every cup is one heat with everyone; 1–10 cups (default 3); ranked by total points, then more cup wins, more 2nd places, …, then the better place in the latest cup both raced; a tie for a podium place goes to sudden death. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-004 | Knockout round 1: `ceil(n/S)` heats, sizes differ by at most 1, largest first, random draw with a redraw in the preview. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-005 | The top X of each heat advance; X can be set per round from 1 to (smallest heat − 1), default ⌊S/2⌋ clipped to that range. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-006 | Fill-ups by the best of the rest: next field F = min(ceil(A/S)·S, A + heats, field − heats) with A = advancers; fill-ups are ranked by heat points, then place; a tie on the cut line needs sudden death before the next round. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-007 | Fill-up mode Last Chance (the best of the rest, up to S, race one extra heat for the fill-up places) or Off. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-008 | Rounds after the first are seeded by snake order of the previous round's result (place, then points), fill-ups last; a field of S or fewer races the final (one heat). Fill-ups carry a "lucky loser" mark. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-009 | Heat size 2 with an odd field: one bye (random in round 1, top seed later); the bye player advances and races in the next round. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-010 | Knockout late sign-ups take a free seat in an unplayed round-1 heat; after that registration is closed. An advancer who withdraws is replaced by the next best of the rest. Edits re-seed or drop a later round that nobody has raced yet. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-011 | One points table for every heat size, default 15-12-10-9-8-7-6-5, editable. Result entry once per heat: console totals (default), final ranking only (table[place] × races), or per race. | Brief v2 §1; D§15 | must | auto |
+| REQ-FMT-012 | For every n = 2..64, S = 2..8 and every uniform X (plus random X per round): the plan ends in exactly one final heat; heats are 2..S with spread ≤ 1; the field shrinks every round; next field = advancers + fill-ups with fill-ups ≤ heats; everyone races in round 1 or, after a bye, in round 2; the reference cases of the plan are exact. | Brief v2 §1 (property) | must | auto |
+| REQ-FMT-013 | A simulated knockout tournament (random results, any n, S, X, fill mode) follows its plan heat for heat and ends with a podium; every player races at least one cup. | Brief v2 §1 (property) | must | auto |
+| REQ-FMT-014 | Final standings: knockout by the final's places, then by the round players went out in (later first, then Last Chance place, points, place); league by the league table. | D§15 | must | auto |
+| REQ-PLAN-001 | Time per heat = races × minutes per race + cup overhead + changeover (default 4 × 3 + 3 + 2 = 17 min); plan time = heats (incl. Last Chance heats) × time per heat. | Brief v2 §1; D§15 | must | auto |
+| REQ-PLAN-002 | The setup has a planner step: expected players, heat size, format, X per round, fill-up mode, league cups or classic rounds, optional time available and start time; it shows a diagram per round, a breakdown and the end time. | Brief v2 §1 | must | auto |
+| REQ-PLAN-003 | Over 3 hours or over the time available the planner warns and lists cheaper variants computed from the settings (fewer advancing, no fill-ups / no Last Chance, fewer cups or rounds, knockout instead of classic), each with the time saved, the ones that fit first. | Brief v2 §1 | must | auto |
+| REQ-PLAN-004 | Home shows the live plan for the real number of players and the difference to the setup plan. | Brief v2 §1 | should | auto |
+| REQ-TIME-001 | Heat times are measured between consecutive first saves (the first heat from when its round was created); gaps over 2.5× the estimate are breaks; corrected minutes per heat = (2 × guess + Σ measured) / (2 + measured heats). | Brief v2 §1; D§15 | must | auto |
+| REQ-TIME-002 | Home and the big screen show minutes per heat (and how many heats were measured), heats left and the expected end time. | Brief v2 §1 | must | auto |
+| REQ-ARCH-001 | Every tournament change from the screens goes through `dispatch(command)`; `applyCommand` is pure, validates its input and rejects invalid commands without changing state. | Brief v2 §2; D§15 | must | auto |
 
 ## UI and journeys (REQ-UI)
 
@@ -122,6 +150,7 @@ Columns: **ID** · statement · **source** (`Spec` = section of docs/spec.md, `D
 | REQ-DATA-020 | Language and sound preferences persist across reloads and are not undoable actions. | D§10, D§13 | should | auto |
 | REQ-DATA-021 | Big screen window never writes to storage. | D§11 | must | auto |
 | REQ-DATA-022 | Autosave is not blocked by an unrelated failing draft or prefs write. | Task §4 | should | auto |
+| REQ-DATA-023 | Schema version 2: stored data and backups of version 1 open as Classic with heat size, the points table that was in use and the old timing, and compute the same standings and finals; version 2 data with invalid format fields is repaired. | Brief v2 §1; D§15 | must | auto |
 
 ## Accessibility (REQ-A11Y)
 
@@ -164,3 +193,4 @@ silently.
 | D-2 | Withdrawal from a small unplayed heat | "Never create a heat with fewer than 3 players." Withdrawal: "excluded from future rounds". | Withdrawing from a 3-player unplayed heat leaves a 2-player heat (known limitation, D§5); the organizer can move someone in. | **Flagged**, spec silent about mid-round withdrawals. |
 | D-3 | Late registration slot | "If the current round still has an unplayed heat with a free slot, offer to add them there." | Same. A free slot means below the max size, even if the heat is already "Now racing". | Consistent. Noted for organizers. |
 | D-4 | Browser kill during heat entry (REQ-DATA-002) | Task §4: a tab close or browser kill loses no confirmed result. | Every save goes to localStorage synchronously, and the E2E test closes the tab without unload handling and reloads mid-heat. Chromium itself writes localStorage to disk with a short delay, so killing the whole browser process (or a power cut) right after a save can lose that last save. This is not covered by an automated test. | Known limitation, documented in DECISIONS §14. |
+| D-5 | Character choice at sign-up (REQ-UI-002) | Spec: sign-up with avatar and favourite. | Still shows the avatar picker and the favourite-character field. | **Decided 2026-11-26:** no character choice in the app (players pick one in the game). Removed in phase 2, then REQ-UI-002 is replaced. |

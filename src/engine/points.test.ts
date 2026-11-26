@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { autoCompleteOrder, DEFAULT_POINTS_4, DEFAULT_POINTS_8, orderFromTotals, orderPerRace, perRaceTotals, pointsForPlace, scoreHeat, totalsTieGroups, validateOrder, validateResult } from './points';
+import { autoCompleteOrder, DEFAULT_POINTS, LEGACY_POINTS_4 as DEFAULT_POINTS_4, LEGACY_POINTS_8 as DEFAULT_POINTS_8, orderFromTotals, orderPerRace, perRaceTotals, pointsForPlace, scoreHeat, totalsTieGroups, validateOrder, validateResult } from './points';
 
 describe('points tables', () => {
-  it('[REQ-ENG-011] has the default tables', () => {
+  it('[REQ-FMT-011] one default table 15-12-10-9-8-7-6-5; the version 1 tables stay for migration', () => {
+    expect(DEFAULT_POINTS).toEqual([15, 12, 10, 9, 8, 7, 6, 5]);
     expect(DEFAULT_POINTS_8).toEqual([15, 12, 10, 8, 6, 4, 2, 1]);
     expect(DEFAULT_POINTS_4).toEqual([10, 6, 3, 1]);
     expect(pointsForPlace(DEFAULT_POINTS_8, 1)).toBe(15);
@@ -91,5 +92,17 @@ describe('console totals entry (mode B)', () => {
       { playerId: 'c', points: 30, place: 2 },
       { playerId: 'a', points: 30, place: 3 },
     ]);
+  });
+});
+
+describe('ranking-only entry', () => {
+  it('[REQ-FMT-011] final cup order only: table[place] × races, validated like an order', () => {
+    const s = scoreHeat({ id: 'h', playerIds: ['a', 'b', 'c'], result: { mode: 'ranking', order: ['c', 'a', 'b'] } }, DEFAULT_POINTS, 4)!;
+    expect(s).toEqual([
+      { playerId: 'c', points: 60, place: 1 },
+      { playerId: 'a', points: 48, place: 2 },
+      { playerId: 'b', points: 40, place: 3 },
+    ]);
+    expect(validateResult({ mode: 'ranking', order: ['a', 'a', 'b'] }, ['a', 'b', 'c'], 4).map((e) => e.code)).toEqual(['missing', 'duplicate']);
   });
 });

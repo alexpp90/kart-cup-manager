@@ -29,10 +29,10 @@ export function TopBar({ route }: { route: string }) {
     { id: 'players', label: t('nav.players'), icon: <IconUsers /> },
     { id: 'rounds', label: t('nav.rounds'), icon: <IconGrid /> },
     { id: 'standings', label: t('nav.standings'), icon: <IconList /> },
-    { id: 'finals', label: t('nav.finals'), icon: <IconBracket /> },
+    ...(tour?.settings.format === 'league' ? [] : [{ id: 'finals', label: tour?.settings.format === 'knockout' ? t('nav.bracket') : t('nav.finals'), icon: <IconBracket /> }]),
     { id: 'settings', label: t('nav.settings'), icon: <IconGear /> },
   ];
-  const active = route === 'heat' ? 'rounds' : route === 'podium' ? 'finals' : route;
+  const active = route === 'heat' ? 'rounds' : route === 'podium' ? (tour?.settings.format === 'league' ? 'standings' : 'finals') : route;
   return (
     <header className="topbar">
       <a href="#/" className="topbar-logo" aria-label={t('app.name')}>

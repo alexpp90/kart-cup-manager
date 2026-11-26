@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { LEGACY_POINTS_4, LEGACY_POINTS_8 } from './points';
 import { simulateResult, skillFor } from './demo';
-import { estimateDuration } from './schedule';
+import { makePlan } from './plan';
 import { createRng } from './rng';
 import {
   addPlayer, addPlayerToHeat, canMovePlayer, commitRound, createTournament, currentRound, defaultSettings, finalResults,
@@ -13,8 +14,11 @@ import type { Settings, Tournament } from './types';
 let counter = 0;
 const newId = () => `id${++counter}`;
 
+/** Classic tournaments with the version 1 defaults, so these tests keep their numbers. */
 function setup(n: number, patch: Partial<Settings> = {}): Tournament {
-  let t = createTournament({ ...defaultSettings(), ...patch }, 'T', 0);
+  const heatSize = patch.heatSize ?? 8;
+  const legacy: Partial<Settings> = { format: 'classic', entryMode: 'per-race', heatSize, points: (heatSize === 4 ? LEGACY_POINTS_4 : LEGACY_POINTS_8).slice(), minutesPerRace: 2.5, cupOverheadMinutes: 0, expectedPlayers: 30 };
+  let t = createTournament({ ...defaultSettings(), ...legacy, ...patch }, 'T', 0);
   for (let i = 0; i < n; i++) {
     const r = addPlayer(t, { name: `Player ${i + 1}`, avatar: 'fox', color: '#f00', status: 'checked-in' }, `p${i + 1}`, 0);
     if (!r.ok) throw new Error(r.error);
@@ -65,7 +69,7 @@ describe('registration', () => {
   });
 
   it('[REQ-ENG-004] gives a bye when 5 players race at max 4', () => {
-    const p = previewRound(setup(5, { maxPerHeat: 4 }), 1, newId, 0);
+    const p = previewRound(setup(5, { heatSize: 4 }), 1, newId, 0);
     if (!p.ok) throw new Error();
     expect(p.round.heats.map((h) => h.playerIds.length)).toEqual([4]);
     expect(p.round.byes).toHaveLength(1);
@@ -159,7 +163,7 @@ describe('withdrawal', () => {
 
 describe('full tournaments', () => {
   it('[REQ-ENG-017][REQ-ENG-035][REQ-ENG-038] 30 players, max 8: 3 rounds with a late join and a withdrawal → semis → grand final → podium', () => {
-    let t = setup(30, { maxPerHeat: 8 });
+    let t = setup(30, { heatSize: 8 });
     t = playRound(t, 1);
     const r = addPlayer(t, { name: 'Late', avatar: 'fox', color: '#000', status: 'checked-in' }, 'late', 0);
     if (!r.ok) throw new Error();
@@ -187,7 +191,7 @@ describe('full tournaments', () => {
   });
 
   it('[REQ-ENG-016][REQ-ENG-034] 11 players, max 4, console totals and a Last Chance heat', () => {
-    let t = setup(11, { maxPerHeat: 4, entryMode: 'totals', lastChance: true, lastChanceWildcards: 1 });
+    let t = setup(11, { heatSize: 4, entryMode: 'totals', lastChance: true, lastChanceWildcards: 1 });
     for (let k = 1; k <= 3; k++) t = playRound(t, k);
     const plan = finalsPlan(t);
     expect(plan.stages!.map((s) => [s.fieldSize, s.wildcards])).toEqual([[8, 1], [4, 0]]);
@@ -205,7 +209,7 @@ describe('full tournaments', () => {
   });
 
   it('[REQ-ENG-036] editing a semifinal before the final is raced re-seeds the final', () => {
-    let t = setup(16, { maxPerHeat: 8, qualRounds: 1 });
+    let t = setup(16, { heatSize: 8, qualRounds: 1 });
     t = playRound(t, 1);
     t = startFinals(t, finalsPlan(t).stages!, newId, 1);
     t = playOpen(t, 2);
@@ -219,11 +223,13 @@ describe('full tournaments', () => {
 });
 
 describe('time estimate', () => {
-  it('[REQ-ENG-040] heats × races × minutes + changeover', () => {
-    const e = estimateDuration(30, defaultSettings());
-    expect(e.qualHeats).toBe(12);
-    expect(e.finalsHeats).toBe(3);
-    expect(e.minutesPerHeat).toBe(12);
-    expect(e.totalMinutes).toBe(180);
+  it('[REQ-PLAN-001] classic: (qualifying + finals heats) × (races × minutes + overhead + changeover)', () => {
+    const s = setup(0).settings;
+    const plan = makePlan(30, s);
+    expect(plan.columns[0].sizes.length * plan.columns[0].repeat).toBe(12);
+    expect(plan.heats - 12).toBe(3);
+    expect(plan.minutesPerHeat).toBe(12);
+    expect(plan.minutes).toBe(180);
+    expect(makePlan(30, { ...s, cupOverheadMinutes: 3 }).minutes).toBe(225);
   });
 });

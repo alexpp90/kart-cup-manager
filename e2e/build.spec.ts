@@ -1,7 +1,7 @@
 // The single-file build: self-contained, works from disk and over http, makes no network requests.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { diskUrl, enterPerRace, expect, httpUrl, permuter, root, test } from './helpers';
+import { diskUrl, enterTotals, expect, httpUrl, permuter, root, test } from './helpers';
 
 const html = readFileSync(path.join(root, 'dist', 'index.html'), 'utf8');
 
@@ -27,7 +27,7 @@ test('[REQ-BLD-002][REQ-UI-024] no network request leaves the page while running
   await page.click('[data-testid=save-round]');
   await page.click('[data-testid=spin-cup]');
   await page.click('[data-testid=home-enter]');
-  await enterPerRace(page, 4, permuter(3));
+  await enterTotals(page, permuter(3));
   await page.click('[data-testid=save-heat]');
   await page.goto(diskUrl('standings'));
   await page.goto(diskUrl('big'));

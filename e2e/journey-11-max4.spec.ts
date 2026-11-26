@@ -20,7 +20,7 @@ test.afterAll(async () => ctx.close());
 
 test.describe('[journey] 11 players, max 4, console totals', () => {
   test('[REQ-UI-008] three qualifying rounds of 4,4,3 entered as console totals', async () => {
-    await setupTournament(page, url, { name: 'Small Cup', max: 4, entry: 'totals', lastChance: true });
+    await setupTournament(page, url, { name: 'Small Cup', format: 'classic', max: 4, entry: 'totals', lastChance: true });
     await quickAdd(page, url, NAMES.slice(0, 11));
     for (let r = 0; r < 3; r++) {
       await generateRound(page, url);

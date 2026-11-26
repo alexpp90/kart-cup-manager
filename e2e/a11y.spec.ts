@@ -26,8 +26,8 @@ test('[REQ-A11Y-001] the organizer flow works by keyboard alone with a visible f
   expect(await tabTo(page, '[data-testid=setup-name]')).toBe(true);
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('Keyboard Cup');
-  for (let i = 0; i < 4; i++) {
-    expect(await tabTo(page, '[data-testid=wizard-next]')).toBe(true);
+  for (let i = 0; i < 3; i++) {
+    expect(await tabTo(page, '[data-testid=wizard-next]', 120)).toBe(true);
     await page.keyboard.press('Enter');
   }
   expect(await tabTo(page, '[data-testid=create-tournament]')).toBe(true);
@@ -48,11 +48,12 @@ test('[REQ-A11Y-001] the organizer flow works by keyboard alone with a visible f
   await page.keyboard.press('Enter');
   expect(await tabTo(page, '[data-testid=home-enter]')).toBe(true);
   await page.keyboard.press('Enter');
-  await page.waitForSelector('.tap-tile');
-  for (let r = 0; r < 4; r++) {
-    for (const k of ['1', '2', '3']) await page.keyboard.press(k);
-    // The next race opens by itself after a short beat.
-    if (r < 3) await expect(page.locator(`[data-testid=race-tab-${r + 2}]`)).toHaveAttribute('aria-selected', 'true');
+  // Console totals (the default entry): the first field has focus, Tab moves on.
+  await page.waitForSelector('input.totals-input');
+  await expect(page.locator('input.totals-input').first()).toBeFocused();
+  for (const v of ['60', '48', '40', '36']) {
+    await page.keyboard.type(v);
+    await page.keyboard.press('Tab');
   }
   expect(await tabTo(page, '[data-testid=save-heat]')).toBe(true);
   await page.keyboard.press('Enter');

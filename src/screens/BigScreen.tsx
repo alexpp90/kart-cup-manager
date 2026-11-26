@@ -5,12 +5,13 @@ import { CupInfo, Roulette } from '../components/Cup';
 import { Flag, ItemBox } from '../components/Icons';
 import { PodiumStage } from '../components/PodiumStage';
 import { Logo } from '../components/TopBar';
-import { finalResults, phaseOf, standings, upcoming } from '../engine/tournament';
+import { finalResults, phaseOf, upcoming } from '../engine/tournament';
 import type { CupPick, Heat, Tournament } from '../engine/types';
-import { heatTitle } from '../lib/labels';
+import { heatTitle, roundLabel } from '../lib/labels';
 import { useApp, useT } from '../store/store';
 import { listenForState } from '../store/sync';
-import { FinalTable, QualTable } from './Standings';
+import { TimeLine } from './Home';
+import { FinalTable, LiveTable, liveRowCount } from './Standings';
 
 const PAGE = 10;
 type Slide = { kind: 'race' } | { kind: 'standings'; page: number } | { kind: 'podium' } | { kind: 'final' } | { kind: 'grid' };
@@ -50,12 +51,12 @@ export function BigScreen() {
   const slides: Slide[] = [];
   if (tour) {
     const phase = phaseOf(tour);
-    const rows = standings(tour).filter((r) => r.heats > 0 && !r.withdrawn);
-    if (phase === 'podium') slides.push({ kind: 'podium' }, { kind: 'final' });
+    const rows = liveRowCount(tour);
+    if (phase === 'podium' && finalResults(tour)) slides.push({ kind: 'podium' }, { kind: 'final' });
     else if (phase === 'registration') slides.push({ kind: 'grid' });
     else {
-      if (upcoming(tour).length || !rows.length) slides.push({ kind: 'race' });
-      for (let p = 0; p * PAGE < Math.min(rows.length, 30); p++) slides.push({ kind: 'standings', page: p });
+      if (upcoming(tour).length || !rows) slides.push({ kind: 'race' });
+      for (let p = 0; p * PAGE < Math.min(rows, 30); p++) slides.push({ kind: 'standings', page: p });
     }
   }
   const slide = slides[slideIdx % Math.max(1, slides.length)] ?? { kind: 'race' };
@@ -101,7 +102,11 @@ export function BigScreen() {
         <Logo small />
         <h1 className="big-name">{tour.settings.name}</h1>
         <span className="big-phase">
-          {phase === 'qualifying' ? `${t('big.qualifying')} · ${t('phase.roundLong', { n: tour.rounds.length })}` : t(`phase.${phase}`)}
+          {phase === 'qualifying'
+            ? tour.settings.format === 'classic'
+              ? `${t('big.qualifying')} · ${t('phase.roundLong', { n: tour.rounds.length })}`
+              : `${t(`format.${tour.settings.format}`)} · ${roundLabel(t, tour, tour.rounds.length - 1)}`
+            : t(`phase.${phase}`)}
         </span>
       </header>
       <div className="big-stage" key={slideIdx + slide.kind}>
@@ -109,9 +114,9 @@ export function BigScreen() {
         {slide.kind === 'standings' && (
           <div className="big-standings">
             <h2 className="big-title">
-              {t('big.standingsTitle')} <small>{t('big.page', { a: slide.page * PAGE + 1, b: Math.min((slide.page + 1) * PAGE, standings(tour).filter((r) => r.heats > 0 && !r.withdrawn).length) })}</small>
+              {t('big.standingsTitle')} <small>{t('big.page', { a: slide.page * PAGE + 1, b: Math.min((slide.page + 1) * PAGE, liveRowCount(tour)) })}</small>
             </h2>
-            <QualTable tour={tour} big limit={[slide.page * PAGE, (slide.page + 1) * PAGE]} />
+            <LiveTable tour={tour} big limit={[slide.page * PAGE, (slide.page + 1) * PAGE]} />
           </div>
         )}
         {slide.kind === 'grid' && (
@@ -145,6 +150,7 @@ export function BigScreen() {
           </div>
         )}
       </div>
+      {phase !== 'podium' && phase !== 'registration' && <TimeLine tour={tour} big />}
       <div className="big-dots" aria-hidden="true">
         {slides.map((_, i) => (
           <span key={i} className={i === slideIdx % slides.length ? 'on' : ''} />

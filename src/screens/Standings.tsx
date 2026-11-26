@@ -4,11 +4,12 @@ import { Card, PosBadge } from '../components/Bits';
 import { IconDownload } from '../components/Icons';
 import { TieInfo } from '../components/TieInfo';
 import { minHeatsForFinals } from '../engine/ranking';
-import { finalResults, previousStandings, standings } from '../engine/tournament';
+import { finalResults, knockoutTable, leagueTable, previousStandings, standings, type KoCell } from '../engine/tournament';
+import { Clover } from '../components/Icons';
 import type { Tournament } from '../engine/types';
 import { exportCsv } from '../lib/actions';
 import { useFlip } from '../lib/flip';
-import { stageName } from '../lib/labels';
+import { roundLabel, stageName } from '../lib/labels';
 import { qualificationMarks } from '../lib/qualification';
 import { useApp, useT } from '../store/store';
 
@@ -31,12 +32,194 @@ export function Standings() {
             {t('standings.final')}
           </button>
           <button role="tab" aria-selected={tab === 'qual'} className={`tab ${tab === 'qual' ? 'on' : ''}`} onClick={() => setTab('qual')}>
-            {t('standings.qualifying')}
+            {t(tour.settings.format === 'knockout' ? 'ko.table' : tour.settings.format === 'league' ? 'league.table' : 'standings.qualifying')}
           </button>
         </div>
       )}
-      {tab === 'final' && final ? <FinalTable tour={tour} /> : <QualTable tour={tour} />}
+      {tab === 'final' && final ? <FinalTable tour={tour} /> : <LiveTable tour={tour} />}
     </div>
+  );
+}
+
+/** The live table of the tournament's format. */
+export function LiveTable({ tour, limit, big }: { tour: Tournament; limit?: [number, number]; big?: boolean }) {
+  if (tour.settings.format === 'knockout') return <KnockoutTable tour={tour} limit={limit} big={big} />;
+  if (tour.settings.format === 'league') return <LeagueTable tour={tour} limit={limit} big={big} />;
+  return <QualTable tour={tour} limit={limit} big={big} />;
+}
+
+/** Rows the TV pages through, per format. */
+export function liveRowCount(tour: Tournament): number {
+  if (tour.settings.format === 'knockout') return knockoutTable(tour).filter((r) => r.status !== 'withdrawn').length;
+  if (tour.settings.format === 'league') return leagueTable(tour).filter((r) => r.cups > 0 && !r.withdrawn).length;
+  return standings(tour).filter((r) => r.heats > 0 && !r.withdrawn).length;
+}
+
+function LuckyMark() {
+  const t = useT();
+  return (
+    <span className="lucky-mark" title={t('ko.lucky')} aria-label={t('ko.lucky')} role="img">
+      <Clover size={16} />
+    </span>
+  );
+}
+
+function KoCellView({ cell }: { cell: KoCell | null }) {
+  const t = useT();
+  if (!cell) return <span className="muted">·</span>;
+  if (cell.mark === 'bye') return <span className="ko-cell ko-bye">{t('ko.bye')}</span>;
+  if (cell.mark === 'racing') return <span className="ko-cell muted">…</span>;
+  const label = { adv: t('ko.adv'), lucky: t('ko.lucky'), out: t('ko.out'), lc: t('stage.lastChance') }[cell.mark];
+  return (
+    <span className={`ko-cell ko-${cell.mark}`} title={label}>
+      {cell.place}. <small>{cell.points}</small> {cell.mark === 'adv' ? '✓' : cell.mark === 'lucky' ? '🍀' : cell.mark === 'lc' ? 'LC' : ''}
+    </span>
+  );
+}
+
+export function KnockoutTable({ tour, limit, big }: { tour: Tournament; limit?: [number, number]; big?: boolean }) {
+  const t = useT();
+  const rows = knockoutTable(tour).filter((r) => !big || r.status !== 'withdrawn');
+  const shown = limit ? rows.slice(limit[0], limit[1]) : rows;
+  const byId = new Map(tour.players.map((p) => [p.id, p]));
+  const ref = useFlip<HTMLTableSectionElement>(shown.map((r) => r.playerId).join());
+  if (!rows.length) {
+    return (
+      <Card>
+        <p className="empty">{t('standings.empty')}</p>
+      </Card>
+    );
+  }
+  return (
+    <Card className={`table-card ${big ? 'table-big' : ''}`}>
+      <table className="standings-table ko-table" data-testid="ko-table">
+        <thead>
+          <tr>
+            <th scope="col">{t('standings.pos')}</th>
+            <th scope="col">{t('standings.racer')}</th>
+            {tour.rounds.map((r, i) => (
+              <th key={r.id} scope="col" className="num">
+                {roundLabel(t, tour, i)}
+              </th>
+            ))}
+            <th scope="col">{t('standings.status')}</th>
+          </tr>
+        </thead>
+        <tbody ref={ref}>
+          {shown.map((r) => {
+            const p = byId.get(r.playerId)!;
+            return (
+              <tr key={r.playerId} data-flip={r.playerId} className={`${r.status === 'champion' ? 'top-1' : ''} ${r.status === 'withdrawn' ? 'is-withdrawn' : ''} ${r.status === 'in' ? 'is-q' : ''}`}>
+                <td>
+                  <PosBadge pos={r.position} size={big ? 'lg' : 'md'} />
+                </td>
+                <td>
+                  <div className="name-cell">
+                    <Avatar player={p} size={big ? 44 : 34} />
+                    <span>
+                      <strong>{p.name}</strong>
+                      {p.tag && <small className="tag">{p.tag}</small>}
+                    </span>
+                    {r.lucky && <LuckyMark />}
+                  </div>
+                </td>
+                {r.cells.map((c, i) => (
+                  <td key={i} className="num">
+                    <KoCellView cell={c} />
+                  </td>
+                ))}
+                <td>
+                  {r.status === 'champion' ? (
+                    <span className="pill pill-q">🏆 {t('ko.champion')}</span>
+                  ) : r.status === 'in' ? (
+                    <span className="pill pill-q">{t('ko.in')}</span>
+                  ) : r.status === 'withdrawn' ? (
+                    <span className="pill pill-withdrawn">{t('standings.withdrawn')}</span>
+                  ) : (
+                    <span className="pill pill-registered">{t('ko.outIn', { round: roundLabel(t, tour, r.reached) })}</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
+export function LeagueTable({ tour, limit, big }: { tour: Tournament; limit?: [number, number]; big?: boolean }) {
+  const t = useT();
+  const rows = leagueTable(tour).filter((r) => r.cups > 0 && (!big || !r.withdrawn));
+  const shown = limit ? rows.slice(limit[0], limit[1]) : rows;
+  const byId = new Map(tour.players.map((p) => [p.id, p]));
+  const cups = Math.max(tour.settings.leagueCups, tour.rounds.length);
+  const ref = useFlip<HTMLTableSectionElement>(shown.map((r) => r.playerId).join());
+  if (!rows.length) {
+    return (
+      <Card>
+        <p className="empty">{t('standings.empty')}</p>
+      </Card>
+    );
+  }
+  return (
+    <Card className={`table-card ${big ? 'table-big' : ''}`}>
+      <table className="standings-table league-table" data-testid="league-table">
+        <thead>
+          <tr>
+            <th scope="col">{t('standings.pos')}</th>
+            <th scope="col">{t('standings.racer')}</th>
+            {Array.from({ length: cups }, (_, i) => (
+              <th key={i} scope="col" className="num">
+                {t('league.cupShort', { n: i + 1 })}
+              </th>
+            ))}
+            <th scope="col" className="num">{t('standings.points')}</th>
+            <th scope="col" className="num">{t('standings.wins')}</th>
+            <th scope="col">{t('standings.status')}</th>
+          </tr>
+        </thead>
+        <tbody ref={ref}>
+          {shown.map((r) => {
+            const p = byId.get(r.playerId)!;
+            return (
+              <tr key={r.playerId} data-flip={r.playerId} className={`${r.rank <= 3 ? `top-${r.rank}` : ''} ${r.withdrawn ? 'is-withdrawn' : ''}`}>
+                <td>
+                  <PosBadge pos={r.rank} size={big ? 'lg' : 'md'} />
+                </td>
+                <td>
+                  <div className="name-cell">
+                    <Avatar player={p} size={big ? 44 : 34} />
+                    <span>
+                      <strong>{p.name}</strong>
+                      {p.tag && <small className="tag">{p.tag}</small>}
+                    </span>
+                  </div>
+                </td>
+                {r.perCup.map((v, i) => (
+                  <td key={i} className="num">
+                    {v ?? '·'}
+                  </td>
+                ))}
+                <td className="num avg-cell">
+                  <b>{r.total}</b>
+                </td>
+                <td className="num">{r.wins}</td>
+                <td>
+                  {r.withdrawn ? (
+                    <span className="pill pill-withdrawn">{t('standings.withdrawn')}</span>
+                  ) : r.lateStart ? (
+                    <span className="pill pill-lc" title={t('league.lateHint')}>
+                      {t('league.late')}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
   );
 }
 
@@ -158,6 +341,12 @@ export function FinalTable({ tour, limit }: { tour: Tournament; limit?: number }
   const t = useT();
   const rows = finalResults(tour) ?? [];
   const byId = new Map(tour.players.map((p) => [p.id, p]));
+  const league = tour.settings.format === 'league' ? new Map(leagueTable(tour).map((r) => [r.playerId, r.total])) : null;
+  const reached = (id: string, stage: number) => {
+    if (league) return league.get(id) ?? '';
+    if (tour.settings.format === 'knockout') return roundLabel(t, tour, stage);
+    return stage >= 0 ? stageName(t, tour.finals!.stages[stage].config.name) : t('standings.qualifying');
+  };
   return (
     <Card className="table-card">
       <table className="standings-table">
@@ -165,7 +354,7 @@ export function FinalTable({ tour, limit }: { tour: Tournament; limit?: number }
           <tr>
             <th scope="col">{t('standings.place')}</th>
             <th scope="col">{t('standings.racer')}</th>
-            <th scope="col">{t('standings.reachedStage')}</th>
+            <th scope="col">{tour.settings.format === 'league' ? t('standings.points') : t('standings.reachedStage')}</th>
           </tr>
         </thead>
         <tbody>
@@ -183,7 +372,7 @@ export function FinalTable({ tour, limit }: { tour: Tournament; limit?: number }
                     {p.tag && <small className="tag">{p.tag}</small>}
                   </div>
                 </td>
-                <td>{r.stageReached >= 0 ? stageName(t, tour.finals!.stages[r.stageReached].config.name) : t('standings.qualifying')}</td>
+                <td>{reached(r.playerId, r.stageReached)}</td>
               </tr>
             );
           })}

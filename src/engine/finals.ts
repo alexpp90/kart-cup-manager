@@ -27,13 +27,13 @@ export function eliminatedCount(stage: StageConfig): number {
  * a full heat, the next stage's field equals advancers + wildcards, the last
  * stage is one heat, and Last Chance pools are big enough for a real heat.
  */
-export function validateStages(stages: StageConfig[], opts: { maxPerHeat: HeatMax; eligible: number }): StageError[] {
+export function validateStages(stages: StageConfig[], opts: { heatSize: HeatMax; eligible: number }): StageError[] {
   const errors: StageError[] = [];
   if (!stages.length) return [{ code: 'no-stages' }];
   stages.forEach((s, i) => {
     const last = i === stages.length - 1;
-    if (!Number.isInteger(s.heatSize) || s.heatSize < MIN_HEAT_SIZE || s.heatSize > opts.maxPerHeat) {
-      errors.push({ code: 'heat-size', stage: i, min: MIN_HEAT_SIZE, max: opts.maxPerHeat });
+    if (!Number.isInteger(s.heatSize) || s.heatSize < MIN_HEAT_SIZE || s.heatSize > opts.heatSize) {
+      errors.push({ code: 'heat-size', stage: i, min: MIN_HEAT_SIZE, max: opts.heatSize });
       return;
     }
     if (!Number.isInteger(s.fieldSize) || s.fieldSize <= 0 || s.fieldSize % s.heatSize !== 0) {
@@ -81,7 +81,9 @@ const st = (name: string, fieldSize: number, heatSize: number, advancePerHeat: n
 
 /**
  * Pick the finals format for the number of eligible players.
- * Stage names are i18n keys (finals.semi, finals.grand, …).
+ * Stage names are i18n keys (finals.semi, finals.grand, …). The presets for
+ * heat sizes 8 and 4 are the version 1 presets, unchanged. Other sizes use two
+ * semi-finals of S where the top half goes on, then one final.
  */
 export function presetStages(max: HeatMax, eligible: number, lastChance = false, wildcards: 1 | 2 = 2): StageConfig[] | null {
   if (eligible < MIN_HEAT_SIZE) return null;
@@ -91,10 +93,15 @@ export function presetStages(max: HeatMax, eligible: number, lastChance = false,
     else if (eligible >= 12) stages = [st('stage.semi', 12, 6, 4), st('stage.grand', 8, 8, 0)];
     else if (eligible >= 8) stages = [st('stage.grand', 8, 8, 0)];
     else stages = [st('stage.grand', eligible, eligible, 0)];
-  } else {
+  } else if (max === 4) {
     if (eligible >= 16) stages = [st('stage.quarter', 16, 4, 2), st('stage.semi', 8, 4, 2), st('stage.final', 4, 4, 0)];
     else if (eligible >= 8) stages = [st('stage.semi', 8, 4, 2), st('stage.final', 4, 4, 0)];
     else if (eligible >= 4) stages = [st('stage.final', 4, 4, 0)];
+    else stages = [st('stage.final', eligible, eligible, 0)];
+  } else {
+    const half = Math.floor(max / 2);
+    if (eligible >= 2 * max && 2 * half >= MIN_HEAT_SIZE) stages = [st('stage.semi', 2 * max, max, half), st('stage.final', 2 * half, 2 * half, 0)];
+    else if (eligible >= max) stages = [st('stage.final', max, max, 0)];
     else stages = [st('stage.final', eligible, eligible, 0)];
   }
   if (lastChance) {

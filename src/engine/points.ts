@@ -1,10 +1,13 @@
 import type { Heat, HeatResult, HeatScore, Settings } from './types';
 
-export const DEFAULT_POINTS_8 = [15, 12, 10, 8, 6, 4, 2, 1];
-export const DEFAULT_POINTS_4 = [10, 6, 3, 1];
+/** The game's points for places 1–8 in a race. */
+export const DEFAULT_POINTS = [15, 12, 10, 9, 8, 7, 6, 5];
+/** Version 1 defaults, kept so old backups are migrated with the table they used. */
+export const LEGACY_POINTS_8 = [15, 12, 10, 8, 6, 4, 2, 1];
+export const LEGACY_POINTS_4 = [10, 6, 3, 1];
 
-export function pointsTable(settings: Pick<Settings, 'maxPerHeat' | 'points8' | 'points4'>): number[] {
-  return settings.maxPerHeat === 8 ? settings.points8 : settings.points4;
+export function pointsTable(settings: Pick<Settings, 'points'>): number[] {
+  return settings.points;
 }
 
 /**
@@ -107,6 +110,7 @@ export function orderFromTotals(points: Record<string, number>, playerIds: strin
 }
 
 export function validateResult(result: HeatResult, playerIds: string[], racesPerHeat: number): ValidationError[] {
+  if (result.mode === 'ranking') return validateOrder(result.order, playerIds);
   if (result.mode === 'per-race') {
     const errors: ValidationError[] = [];
     if (result.races.length !== racesPerHeat) {
@@ -134,10 +138,15 @@ export function validateResult(result: HeatResult, playerIds: string[], racesPer
   return errors;
 }
 
-/** Score a saved heat: points and unique 1-based place for each player. */
-export function scoreHeat(heat: Heat, table: number[]): HeatScore[] | null {
+/**
+ * Score a saved heat: points and unique 1-based place for each player.
+ * 'ranking' entries score table[place] × races, the same scale as a cup where
+ * you finished that place in every race.
+ */
+export function scoreHeat(heat: Heat, table: number[], races = 4): HeatScore[] | null {
   const r = heat.result;
   if (!r) return null;
+  if (r.mode === 'ranking') return r.order.map((id, i) => ({ playerId: id, points: pointsForPlace(table, i + 1) * races, place: i + 1 }));
   if (r.mode === 'per-race') {
     const totals = perRaceTotals(r.races, heat.playerIds, table);
     return orderPerRace(r.races, heat.playerIds, table).map((id, i) => ({ playerId: id, points: totals[id], place: i + 1 }));

@@ -60,19 +60,37 @@ export async function shot(page: Page, dir: string, name: string) {
   await page.screenshot({ path: path.join(out, `${name}.png`) });
 }
 
-export async function setupTournament(page: Page, url: Url, o: { name: string; max?: 4 | 8; entry?: 'totals'; lastChance?: boolean }) {
+export interface SetupOptions {
+  name: string;
+  format?: 'classic' | 'knockout' | 'league';
+  max?: number;
+  players?: number;
+  entry?: 'totals' | 'ranking' | 'per-race';
+  /** Classic: Last Chance with 1 wildcard. Knockout: fill-up mode Last Chance. */
+  lastChance?: boolean;
+  fill?: 'best' | 'last-chance' | 'off';
+}
+
+/**
+ * Create a tournament through the wizard. Without options it is a Classic
+ * tournament with per-race entry (the version 1 defaults the older specs expect).
+ */
+export async function setupTournament(page: Page, url: Url, o: SetupOptions) {
+  const format = o.format ?? 'classic';
   await page.goto(url());
   await page.click('[data-testid=new-tournament]');
   await page.fill('[data-testid=setup-name]', o.name);
   await page.click('[data-testid=wizard-next]');
-  if (o.max === 4) await page.click('label.choice:has-text("4 per heat")');
-  if (o.entry === 'totals') await page.click('label.choice:has-text("Console totals")');
-  await page.click('[data-testid=wizard-next]');
-  await page.click('[data-testid=wizard-next]');
-  if (o.lastChance) {
+  if (o.players) await page.locator('[data-testid=expected-players]').fill(String(o.players));
+  await page.click(`[data-testid=heat-size-${o.max ?? 8}]`);
+  await page.click(`[data-testid=format-${format}]`);
+  if (format === 'classic' && o.lastChance) {
     await page.click('label.toggle:has-text("Last Chance heat")');
-    await page.click('label.choice:has-text("1")');
+    await page.click('[data-testid=wc-1]');
   }
+  if (format === 'knockout' && (o.fill || o.lastChance)) await page.click(`[data-testid=fill-${o.fill ?? 'last-chance'}]`);
+  await page.click('[data-testid=wizard-next]');
+  await page.click(`[data-testid=entry-${o.entry ?? (format === 'classic' ? 'per-race' : 'totals')}]`);
   await page.click('[data-testid=wizard-next]');
   await page.click('[data-testid=create-tournament]');
   await expect(page.locator('.players')).toBeVisible();
@@ -115,6 +133,13 @@ export async function enterPerRace(page: Page, races: number, perm: (n: number) 
   }
 }
 
+/** Final order only: tap the order with the number keys; the last place fills itself. */
+export async function enterRanking(page: Page, perm: (n: number) => number[]) {
+  await page.waitForSelector('.tap-tile');
+  const n = await page.locator('.tap-tile').count();
+  for (const k of perm(n).slice(0, n - 1)) await page.keyboard.press(String(k));
+}
+
 export async function enterTotals(page: Page, perm: (n: number) => number[], withTie = false) {
   const inputs = page.locator('input.totals-input');
   const n = await inputs.count();
@@ -133,9 +158,11 @@ export async function playQueue(page: Page, url: Url, perm: (n: number) => numbe
     await enter.click();
     await page.waitForSelector('.result-entry');
     const isTotals = (await page.locator('input.totals-input').count()) > 0;
+    const isRanking = (await page.locator('[data-testid=mode-ranking][aria-checked=true]').count()) > 0;
     const useTotals = isTotals || (o.totalsEvery !== undefined && count % o.totalsEvery === o.totalsEvery - 1);
-    if (useTotals && !isTotals) await page.click('[data-testid=switch-mode]');
+    if (useTotals && !isTotals) await page.click('[data-testid=mode-totals]');
     if (useTotals) await enterTotals(page, perm);
+    else if (isRanking) await enterRanking(page, perm);
     else await enterPerRace(page, o.races ?? 4, perm);
     await page.click('[data-testid=save-heat]');
     await expect(page.locator('.notice-error')).toHaveCount(0);

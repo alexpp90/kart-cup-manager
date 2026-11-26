@@ -37,3 +37,8 @@ export function standingsCsv(rows: StandingRow[], players: Player[], labels: Csv
   }
   return '﻿' + lines.join('\r\n') + '\r\n';
 }
+
+/** Any table as CSV with the same conventions (BOM, commas, CRLF, escaping). */
+export function tableCsv(headers: string[], rows: (string | number)[][]): string {
+  return '\ufeff' + [headers, ...rows].map((r) => r.map(esc).join(',')).join('\r\n') + '\r\n';
+}

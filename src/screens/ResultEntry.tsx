@@ -5,12 +5,12 @@ import { HeatCup } from '../components/Cup';
 import { IconDown, IconUp } from '../components/Icons';
 import { TapOrder } from '../components/TapOrder';
 import { orderFromTotals, perRaceTotals, totalsTieGroups, validateResult, type ValidationError } from '../engine/points';
-import { clearHeatResult, heatInfo, saveHeatResult, tableFor } from '../engine/tournament';
+import { heatInfo, tableFor } from '../engine/tournament';
 import type { EntryMode, HeatResult, Player } from '../engine/types';
 import { heatTitle, names } from '../lib/labels';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
-import { newId, tNow, useApp, useT } from '../store/store';
+import { useApp, useT } from '../store/store';
 import { DRAFT_PREFIX } from '../store/persist';
 import { confirmDialog, toast } from '../store/ui';
 
@@ -42,7 +42,7 @@ function loadDraft(heatId: string): Draft | null {
 export function ResultEntry({ heatId }: { heatId: string }) {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const info = heatInfo(tour, heatId);
   const heat = info?.heat;
   const races = tour.settings.racesPerHeat;
@@ -53,6 +53,7 @@ export function ResultEntry({ heatId }: { heatId: string }) {
     const r = heat?.result;
     if (r?.mode === 'per-race') return { mode: 'per-race', races: r.races.map((x) => x.slice()), points: {}, order: [] };
     if (r?.mode === 'totals') return { mode: 'totals', races: [], points: Object.fromEntries(Object.entries(r.points).map(([k, v]) => [k, String(v)])), order: r.order.slice() };
+    if (r?.mode === 'ranking') return { mode: 'ranking', races: [], points: {}, order: r.order.slice() };
     return { mode: tour.settings.entryMode, races: [], points: {}, order: [] };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [heatId]);
@@ -81,10 +82,11 @@ export function ResultEntry({ heatId }: { heatId: string }) {
   }
   const players = heat.playerIds.map((id) => tour.players.find((p) => p.id === id)!).filter(Boolean);
   const table = tableFor(tour);
-  const back = () => go(info.kind === 'qual' ? '' : 'finals');
+  const back = () => go(info.kind === 'qual' || info.kind === 'rlc' ? '' : 'finals');
 
   const buildResult = (): HeatResult => {
     if (draft.mode === 'per-race') return { mode: 'per-race', races: draft.races.slice(0, races).map((r) => r.slice()) };
+    if (draft.mode === 'ranking') return { mode: 'ranking', order: draft.order.slice() };
     const points = Object.fromEntries(heat.playerIds.map((id) => [id, draft.points[id] === undefined || draft.points[id] === '' ? Number.NaN : Number(draft.points[id])]));
     return { mode: 'totals', points, order: orderFromTotals(points, heat.playerIds, draft.order) };
   };
@@ -102,7 +104,7 @@ export function ResultEntry({ heatId }: { heatId: string }) {
       sound.error();
       return;
     }
-    apply(tNow('action.saveHeat'), (x) => saveHeatResult(x, heat.id, result, Date.now(), newId));
+    dispatch({ type: 'saveResult', heatId: heat.id, result });
     dropDraft(heatId);
     sound.success();
     toast(t('result.saved'), 'success');
@@ -111,14 +113,14 @@ export function ResultEntry({ heatId }: { heatId: string }) {
 
   const clearSaved = async () => {
     if (await confirmDialog({ title: t('result.clearSaved'), body: t('result.clearConfirm'), danger: true })) {
-      apply(tNow('action.clearHeat'), (x) => clearHeatResult(x, heat.id, newId));
+      dispatch({ type: 'clearResult', heatId: heat.id });
       dropDraft(heatId);
       setDraftState({ mode: tour.settings.entryMode, races: [], points: {}, order: [] });
       setRace(0);
     }
   };
 
-  const switchMode = () => setDraft({ ...draft, mode: draft.mode === 'per-race' ? 'totals' : 'per-race' });
+  const setMode = (mode: EntryMode) => setDraft({ ...draft, mode, order: mode === 'ranking' && draft.mode !== 'ranking' ? [] : draft.order });
 
   return (
     <div className="result-entry">
@@ -128,9 +130,13 @@ export function ResultEntry({ heatId }: { heatId: string }) {
           <HeatCup tour={tour} heat={heat} compact />
         </div>
         <div className="btn-row">
-          <button className="btn btn-white btn-sm" onClick={switchMode} data-testid="switch-mode">
-            {draft.mode === 'per-race' ? t('result.useTotals') : t('result.usePerRace')}
-          </button>
+          <div className="seg" role="radiogroup" aria-label={t('setup.entryMode')}>
+            {(['totals', 'ranking', 'per-race'] as const).map((m) => (
+              <button key={m} role="radio" aria-checked={draft.mode === m} className={`btn btn-sm ${draft.mode === m ? 'btn-sky' : 'btn-white'}`} onClick={() => setMode(m)} data-testid={`mode-${m}`}>
+                {t(m === 'totals' ? 'setup.entryTotals' : m === 'ranking' ? 'setup.entryRanking' : 'setup.entryPerRace')}
+              </button>
+            ))}
+          </div>
           {heat.result && (
             <button className="btn btn-white btn-sm btn-danger-text" onClick={() => void clearSaved()}>
               {t('result.clearSaved')}
@@ -140,6 +146,8 @@ export function ResultEntry({ heatId }: { heatId: string }) {
       </div>
       {draft.mode === 'per-race' ? (
         <PerRace players={players} draft={draft} setDraft={setDraft} race={race} setRace={setRace} races={races} table={table} />
+      ) : draft.mode === 'ranking' ? (
+        <Ranking players={players} draft={draft} setDraft={setDraft} races={races} table={table} />
       ) : (
         <Totals players={players} draft={draft} setDraft={setDraft} />
       )}
@@ -326,6 +334,46 @@ function Totals({ players, draft, setDraft }: { players: Player[]; draft: Draft;
             );
           })}
         </ol>
+      </Card>
+    </div>
+  );
+}
+
+/** Final cup order only: tap the players from 1st to last; points = table[place] × races. */
+function Ranking({ players, draft, setDraft, races, table }: { players: Player[]; draft: Draft; setDraft: (d: Draft) => void; races: number; table: number[] }) {
+  const t = useT();
+  const byId = new Map(players.map((p) => [p.id, p]));
+  return (
+    <div className="per-race-grid">
+      <Card title={t('setup.entryRanking')} tone="blue">
+        <p className="muted">
+          {t('result.rankingHint')} <span className="kbd-hint">{t('result.keyHint', { n: Math.min(9, players.length) })}</span>
+        </p>
+        <TapOrder players={players} order={draft.order} onChange={(order) => setDraft({ ...draft, order })} />
+        <div className="btn-row">
+          <button className="btn btn-white btn-sm" disabled={!draft.order.length} onClick={() => setDraft({ ...draft, order: draft.order.length === players.length ? draft.order.slice(0, -2) : draft.order.slice(0, -1) })}>
+            {t('result.undoTap')}
+          </button>
+          <button className="btn btn-white btn-sm" disabled={!draft.order.length} onClick={() => setDraft({ ...draft, order: [] })}>
+            {t('result.clearRace')}
+          </button>
+        </div>
+      </Card>
+      <Card title={t('result.order')} tone="gold" className="running">
+        <ol className="order-list">
+          {draft.order.map((id, i) => {
+            const p = byId.get(id);
+            return p ? (
+              <li key={id}>
+                <PosBadge pos={i + 1} size="sm" />
+                <Avatar player={p} size={26} />
+                <span className="totals-name">{p.name}</span>
+                <b className="num">{(table[i] ?? 0) * races}</b>
+              </li>
+            ) : null;
+          })}
+        </ol>
+        {draft.order.length < players.length && <p className="muted">{t('result.rankingLeft', { n: players.length - draft.order.length })}</p>}
       </Card>
     </div>
   );

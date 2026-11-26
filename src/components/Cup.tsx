@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { CUPS, type Cup } from '../data/cups';
 import { cupPool, trackPool } from '../engine/cups';
-import { randomCupFor, setHeatCup } from '../engine/tournament';
+import { randomCupFor } from '../engine/tournament';
 import type { CupPick, Heat, Tournament } from '../engine/types';
 import { prefersReducedMotion, sound } from '../lib/sound';
-import { tNow, useApp, useT } from '../store/store';
+import { useApp, useT } from '../store/store';
 import { Modal } from './Dialogs';
 import { IconShuffle } from './Icons';
 
@@ -155,7 +155,7 @@ export function Roulette({ pick, boosterPass, onDone, big }: { pick: CupPick; bo
 /** Cup row for a heat: shows the pick and the right button for the track mode. */
 export function HeatCup({ tour, heat, compact }: { tour: Tournament; heat: Heat; compact?: boolean }) {
   const t = useT();
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const [spin, setSpin] = useState<CupPick | null>(null);
   const [picking, setPicking] = useState(false);
   const mode = tour.settings.trackMode;
@@ -165,7 +165,7 @@ export function HeatCup({ tour, heat, compact }: { tour: Tournament; heat: Heat;
     const pick = randomCupFor(tour, Math.floor(Math.random() * 2 ** 31));
     if (pick) setSpin(pick);
   };
-  const commit = (pick: CupPick) => apply(tNow('action.cup'), (x) => setHeatCup(x, heat.id, pick));
+  const commit = (pick: CupPick) => dispatch({ type: 'setCup', heatId: heat.id, cup: pick });
   if (!heat.cup && (played || (mode === 'none' && compact))) return null;
 
   return (

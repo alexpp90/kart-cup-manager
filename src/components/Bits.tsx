@@ -73,7 +73,7 @@ export function ChoiceCards<V extends string | number>({ value, options, onChang
   return (
     <div className="choices" role="radiogroup">
       {options.map((o) => (
-        <label key={String(o.value)} className={`choice ${value === o.value ? 'choice-on' : ''} ${disabled ? 'choice-disabled' : ''}`}>
+        <label key={String(o.value)} className={`choice ${value === o.value ? 'choice-on' : ''} ${disabled ? 'choice-disabled' : ''}`} data-testid={`${name}-${o.value}`}>
           <input type="radio" name={name} checked={value === o.value} disabled={disabled} onChange={() => onChange(o.value)} />
           {o.icon && <span className="choice-icon">{o.icon}</span>}
           <span className="choice-label">{o.label}</span>

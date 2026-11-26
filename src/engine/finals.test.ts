@@ -33,7 +33,7 @@ describe('finals stages', () => {
       for (let n = 3; n <= 64; n++) {
         for (const lc of [false, true]) {
           const stages = presetStages(max, n, lc, 2)!;
-          expect(validateStages(stages, { maxPerHeat: max, eligible: n })).toEqual([]);
+          expect(validateStages(stages, { heatSize: max, eligible: n })).toEqual([]);
         }
       }
     });
@@ -48,7 +48,7 @@ describe('finals stages', () => {
 
   it('[REQ-ENG-031] reports configurations that do not add up', () => {
     const codes = (stages: Parameters<typeof validateStages>[0], eligible = 30, max: 4 | 8 = 8) =>
-      validateStages(stages, { maxPerHeat: max, eligible }).map((e) => e.code);
+      validateStages(stages, { heatSize: max, eligible }).map((e) => e.code);
     expect(codes([])).toEqual(['no-stages']);
     expect(codes([{ name: 'x', fieldSize: 15, heatSize: 8, advancePerHeat: 4, wildcards: 0 }, { name: 'f', fieldSize: 8, heatSize: 8, advancePerHeat: 0, wildcards: 0 }])).toContain('not-divisible');
     expect(codes([{ name: 'x', fieldSize: 16, heatSize: 8, advancePerHeat: 3, wildcards: 0 }, { name: 'f', fieldSize: 8, heatSize: 8, advancePerHeat: 0, wildcards: 0 }])).toContain('field-mismatch');

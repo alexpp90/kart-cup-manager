@@ -2,6 +2,7 @@
 // stored envelope, backups and storage writes. Pure or storage-injected so it
 // can be unit tested in node.
 import { defaultSettings } from '../engine/tournament';
+import { LEGACY_POINTS_4, LEGACY_POINTS_8 } from '../engine/points';
 import type { Settings, Tournament } from '../engine/types';
 
 export const APP = 'kart-cup-manager';
@@ -12,7 +13,7 @@ export const CORRUPT_KEY = 'kart-cup-manager:v1:corrupt';
 export const DRAFT_PREFIX = 'kart-cup-manager:draft:';
 export const HISTORY_LIMIT = 30;
 /** Highest tournament schema this build understands. */
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 export interface Snapshot {
   label: string;
@@ -77,14 +78,28 @@ export function migrateTournament(raw: unknown): MigrateResult {
     repairs.push('settings');
   }
   const s = t.settings as Record<string, unknown>;
+  if (t.version === 1) upgradeV1(t, s, repairs);
   const defaults = defaultSettings() as unknown as Record<string, unknown>;
   for (const [key, def] of Object.entries(defaults)) {
     const sameType = (v: unknown) => (Array.isArray(def) ? Array.isArray(v) : typeof v === typeof def);
     fix(s, key, sameType, structuredClone(def), repairs, 'settings.');
   }
-  if (s.maxPerHeat !== 4 && s.maxPerHeat !== 8) {
-    s.maxPerHeat = 8;
-    repairs.push('settings.maxPerHeat');
+  const oneOf = (key: string, values: unknown[]) => {
+    if (!values.includes(s[key])) {
+      s[key] = (defaults as Record<string, unknown>)[key];
+      repairs.push(`settings.${key}`);
+    }
+  };
+  if (!Number.isInteger(s.heatSize) || (s.heatSize as number) < 2 || (s.heatSize as number) > 8) {
+    s.heatSize = 8;
+    repairs.push('settings.heatSize');
+  }
+  oneOf('format', ['classic', 'knockout', 'league']);
+  oneOf('entryMode', ['totals', 'ranking', 'per-race']);
+  oneOf('fill', ['best', 'last-chance', 'off']);
+  if (s.format === 'classic' && (s.heatSize as number) < 3) {
+    s.heatSize = 3;
+    repairs.push('settings.heatSize');
   }
 
   for (let i = 0; i < t.players.length; i++) {
@@ -127,6 +142,38 @@ export function migrateTournament(raw: unknown): MigrateResult {
   fix(t, 'createdAt', isNum, 0, repairs, '');
   fix(t, 'rngCounter', isNum, 0, repairs, '');
   return { ok: true, t: t as unknown as Tournament, repairs };
+}
+
+/**
+ * Version 1 → 2: `maxPerHeat` becomes `heatSize`, the table that was in use
+ * becomes the single `points` table, the format is Classic, and the new
+ * timing and format settings get values that keep the old estimate
+ * (no cup overhead). These are upgrades, not repairs.
+ */
+function upgradeV1(t: Record<string, unknown>, s: Record<string, unknown>, repairs: string[]): void {
+  // Unversioned data that already has the version 2 shape only lacks its number.
+  if (s.maxPerHeat === undefined && s.heatSize !== undefined) {
+    t.version = 2;
+    return;
+  }
+  const max = s.maxPerHeat === 4 ? 4 : 8;
+  if (s.maxPerHeat !== undefined && s.maxPerHeat !== 4 && s.maxPerHeat !== 8) repairs.push('settings.maxPerHeat');
+  const table = max === 4 ? s.points4 : s.points8;
+  const valid = Array.isArray(table) && table.length > 0 && table.every(isNum);
+  if (s.maxPerHeat !== undefined && !valid) repairs.push(`settings.points${max}`);
+  s.heatSize = max;
+  s.points = valid ? (table as number[]).slice() : (max === 4 ? LEGACY_POINTS_4 : LEGACY_POINTS_8).slice();
+  delete s.maxPerHeat;
+  delete s.points8;
+  delete s.points4;
+  s.format = 'classic';
+  if (!isNum(s.cupOverheadMinutes)) s.cupOverheadMinutes = 0;
+  if (!Array.isArray(s.advance)) s.advance = [];
+  if (s.fill === undefined) s.fill = 'best';
+  if (!isNum(s.leagueCups)) s.leagueCups = 3;
+  if (!isNum(s.availableMinutes)) s.availableMinutes = 0;
+  if (!isStr(s.startTime)) s.startTime = '';
+  t.version = 2;
 }
 
 // ------------------------------------------------------------- stored envelope

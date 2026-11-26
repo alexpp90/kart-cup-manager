@@ -4,50 +4,49 @@ import { Card } from '../components/Bits';
 import { HeatCard } from '../components/HeatCard';
 import { IconPlus, IconX, Trophy } from '../components/Icons';
 import { describeStages } from '../components/StageSummary';
-import { TapOrder } from '../components/TapOrder';
+import { SuddenDeathCard } from '../components/SuddenDeath';
 import { presetStages } from '../engine/finals';
-import { minHeatsForFinals, suddenDeathKey } from '../engine/ranking';
-import { cancelFinals, currentRound, finalResults, finalsHeats, finalsPlan, phaseOf, resolveSuddenDeath, roundComplete, startFinals } from '../engine/tournament';
+import { minHeatsForFinals } from '../engine/ranking';
+import { currentRound, finalResults, finalsHeats, finalsPlan, luckyLosers, phaseOf, roundComplete, roundOutcome } from '../engine/tournament';
 import type { StageConfig, Tournament } from '../engine/types';
 import type { StageError } from '../engine/finals';
-import { stageName } from '../lib/labels';
+import { roundLabel, stageName } from '../lib/labels';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
-import { newId, tNow, useApp, useT } from '../store/store';
+import { useApp, useT } from '../store/store';
 import { confirmDialog } from '../store/ui';
 
 export function Finals() {
   const tour = useApp((s) => s.t)!;
+  if (tour.settings.format === 'knockout') return <KnockoutBracket tour={tour} />;
   return tour.finals ? <Bracket tour={tour} /> : <FinalsSetup tour={tour} />;
 }
 
 function autoStages(tour: Tournament): StageConfig[] {
   const s = tour.settings;
   const eligible = finalsPlan(tour).eligible.length;
-  return presetStages(s.maxPerHeat, eligible, s.lastChance, s.lastChanceWildcards) ?? [];
+  return presetStages(s.heatSize, eligible, s.lastChance, s.lastChanceWildcards) ?? [];
 }
 
 function FinalsSetup({ tour }: { tour: Tournament }) {
   const t = useT();
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const [stages, setStages] = useState<StageConfig[]>(() => (tour.settings.finalsFormat === 'custom' && tour.settings.customStages.length ? tour.settings.customStages : autoStages(tour)));
   const plan = useMemo(() => finalsPlan(tour, stages), [tour, stages]);
   const round = currentRound(tour);
   const ready = !!round && roundComplete(round);
-  const [sd, setSd] = useState<string[]>([]);
   const minHeats = minHeatsForFinals(tour.settings.qualRounds);
 
   const patchStage = (i: number, p: Partial<StageConfig>) => setStages(stages.map((s, k) => (k === i ? { ...s, ...p } : s)));
   const start = async () => {
     if (!(await confirmDialog({ title: t('finals.start'), body: t('finals.startConfirm') }))) return;
-    apply(tNow('action.finals'), (x) => startFinals(x, stages, newId, Date.now()));
+    dispatch({ type: 'startFinals', stages });
     sound.fanfare();
   };
   const errorText = (e: StageError) => {
     const stage = 'stage' in e ? stageName(t, stages[e.stage]?.name ?? '') || t('stage.custom', { n: e.stage + 1 }) : '';
     return t(`finals.err.${e.code}`, { ...(e as unknown as Record<string, number>), stage });
   };
-  const tiedPlayers = plan.tie ? plan.tie.map((id) => tour.players.find((p) => p.id === id)!) : [];
 
   return (
     <div className="finals-setup">
@@ -123,29 +122,7 @@ function FinalsSetup({ tour }: { tour: Tournament }) {
           )}
         </Card>
         <div className="finals-side">
-          {plan.tie && !plan.errors.length && (
-            <Card title={t('finals.suddenDeath')} tone="red" className="sudden">
-              <p>{t('finals.suddenBody', { names: tiedPlayers.map((p) => p.name).join(', ') })}</p>
-              <TapOrder players={tiedPlayers} order={sd} onChange={setSd} keyboard={false} />
-              <div className="btn-row">
-                <button className="btn btn-white btn-sm" onClick={() => setSd([])}>
-                  {t('result.clearRace')}
-                </button>
-                <button
-                  className="btn btn-green"
-                  disabled={sd.length !== tiedPlayers.length}
-                  onClick={() => {
-                    apply(tNow('action.sudden'), (x) => resolveSuddenDeath(x, { key: suddenDeathKey(plan.tie!), order: sd }));
-                    setSd([]);
-                    sound.success();
-                  }}
-                  data-testid="save-sudden"
-                >
-                  {t('finals.suddenSave')}
-                </button>
-              </div>
-            </Card>
-          )}
+          {plan.tie && !plan.errors.length && <SuddenDeathCard tie={plan.tie} />}
           {!plan.errors.length && stages[0] && (
             <Card title={t('standings.q')} tone="gold">
               <ol className="seed-list">
@@ -175,14 +152,14 @@ function FinalsSetup({ tour }: { tour: Tournament }) {
 
 function Bracket({ tour }: { tour: Tournament }) {
   const t = useT();
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const finals = tour.finals!;
   const anyPlayed = finalsHeats(tour).some((h) => h.result);
   const results = finalResults(tour);
   const champion = results ? tour.players.find((p) => p.id === results[0].playerId) : null;
 
   const cancel = async () => {
-    if (await confirmDialog({ title: t('finals.cancel'), body: t('finals.cancelConfirm'), danger: true })) apply(tNow('action.cancelFinals'), cancelFinals);
+    if (await confirmDialog({ title: t('finals.cancel'), body: t('finals.cancelConfirm'), danger: true })) dispatch({ type: 'cancelFinals' });
   };
 
   const columns: { key: string; title: string; content: React.ReactNode; tone: 'red' | 'blue' | 'gold' | 'green' | 'navy' }[] = [];
@@ -242,6 +219,57 @@ function Bracket({ tour }: { tour: Tournament }) {
             <div className="bracket-heats">{c.content}</div>
           </section>
         ))}
+        <section className="bracket-col bracket-champ">
+          <h2 className="ribbon ribbon-gold">{t('finals.champion')}</h2>
+          <div className="champ-box">
+            <Trophy size={72} />
+            {champion ? (
+              <>
+                <Avatar player={champion} size={72} />
+                <strong className="display">{champion.name}</strong>
+              </>
+            ) : (
+              <span className="muted">{t('finals.tbd')}</span>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** Knockout: one column per round with its heats and Last Chance heat, then the champion. */
+function KnockoutBracket({ tour }: { tour: Tournament }) {
+  const t = useT();
+  const results = finalResults(tour);
+  const champion = results ? tour.players.find((p) => p.id === results[0].playerId) : null;
+  const lucky = luckyLosers(tour);
+  return (
+    <div className="bracket-page">
+      <div className="page-head">
+        <h1 className="display page-title">{t('finals.bracket')}</h1>
+        {phaseOf(tour) === 'podium' && (
+          <button className="btn btn-red" onClick={() => go('podium')} data-testid="goto-podium">
+            {t('home.toPodium')}
+          </button>
+        )}
+      </div>
+      {!tour.rounds.length && <p className="notice">{t('rounds.none')}</p>}
+      <div className="bracket">
+        {tour.rounds.map((r, i) => {
+          const o = roundOutcome(tour, r);
+          return (
+            <section key={r.id} className="bracket-col" style={{ animationDelay: `${i * 90}ms` }}>
+              <h2 className={`ribbon ribbon-${r.final ? 'gold' : 'blue'}`}>{roundLabel(t, tour, i)}</h2>
+              <div className="bracket-heats">
+                {r.heats.map((h, k) => (
+                  <HeatCard key={h.id} tour={tour} heat={h} siblings={r.heats} advance={r.final ? 0 : r.advance} index={k} lucky={lucky} controls={false} />
+                ))}
+                {r.lastChance && <HeatCard tour={tour} heat={r.lastChance} advance={o.status === 'done' ? o.luckyLosers.length : undefined} lucky={lucky} controls={false} />}
+              </div>
+            </section>
+          );
+        })}
         <section className="bracket-col bracket-champ">
           <h2 className="ribbon ribbon-gold">{t('finals.champion')}</h2>
           <div className="champ-box">

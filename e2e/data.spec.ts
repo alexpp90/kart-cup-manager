@@ -77,7 +77,6 @@ test('[REQ-DATA-006] storage blocked: the app works in memory, says so and can e
   await page.click('[data-testid=wizard-next]');
   await page.click('[data-testid=wizard-next]');
   await page.click('[data-testid=wizard-next]');
-  await page.click('[data-testid=wizard-next]');
   await page.click('[data-testid=create-tournament]');
   await expect(page.locator('.players')).toBeVisible();
   await expect(page.locator('[data-testid=storage-unavailable]')).toBeVisible();
@@ -115,7 +114,7 @@ test('[REQ-DATA-008] missing fields are repaired with defaults and reported; bro
   await page.evaluate((k) => {
     const env = JSON.parse(localStorage.getItem(k)!);
     delete env.t.suddenDeath;
-    delete env.t.settings.points4;
+    delete env.t.settings.cupOverheadMinutes;
     delete env.t.players[0].tag;
     localStorage.setItem(k, JSON.stringify(env));
   }, STORAGE_KEY);

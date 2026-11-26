@@ -2,6 +2,7 @@
 // edits), plus registration, CSV and purity rules.
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { LEGACY_POINTS_4, LEGACY_POINTS_8 } from './points';
 import { standingsCsv } from './csv';
 import { simulateResult, skillFor } from './demo';
 import { snakeSeed } from './finals';
@@ -20,8 +21,11 @@ import type { HeatMax, Settings, Tournament } from './types';
 let counter = 0;
 const newId = () => `id${++counter}`;
 
+/** Classic tournaments with the version 1 defaults, so these tests keep their numbers. */
 function setup(n: number, patch: Partial<Settings> = {}): Tournament {
-  let t = createTournament({ ...defaultSettings(), ...patch }, 'T', 0);
+  const heatSize = patch.heatSize ?? 8;
+  const legacy: Partial<Settings> = { format: 'classic', entryMode: 'per-race', heatSize, points: (heatSize === 4 ? LEGACY_POINTS_4 : LEGACY_POINTS_8).slice(), minutesPerRace: 2.5, cupOverheadMinutes: 0, expectedPlayers: 30 };
+  let t = createTournament({ ...defaultSettings(), ...legacy, ...patch }, 'T', 0);
   for (let i = 0; i < n; i++) {
     const r = addPlayer(t, { name: `Player ${i + 1}`, avatar: 'fox', color: '#f00', status: 'checked-in' }, `p${i + 1}`, 0);
     if (!r.ok) throw new Error(r.error);
@@ -64,7 +68,7 @@ function randomStep(t: Tournament, rng: Rng, step: number): Tournament {
 
 function randomTournament(seed: number, n: number, max: HeatMax, steps = 30): Tournament[] {
   const rng = createRng(seed);
-  let t = setup(n, { maxPerHeat: max, qualRounds: 3, entryMode: rng() < 0.5 ? 'per-race' : 'totals' });
+  let t = setup(n, { heatSize: max, qualRounds: 3, entryMode: rng() < 0.5 ? 'per-race' : 'totals' });
   const states = [t];
   for (let i = 0; i < steps; i++) {
     t = randomStep(t, rng, i);
@@ -128,7 +132,9 @@ describe('properties over random tournaments', () => {
         const edited =
           r.mode === 'per-race'
             ? { ...r, races: r.races.map((race) => race.slice().reverse()) }
-            : { ...r, order: r.order.slice().reverse(), points: Object.fromEntries(r.order.map((id, i) => [id, r.points[r.order[r.order.length - 1 - i]]])) };
+            : r.mode === 'totals'
+              ? { ...r, order: r.order.slice().reverse(), points: Object.fromEntries(r.order.map((id, i) => [id, r.points[r.order[r.order.length - 1 - i]]])) }
+              : { ...r, order: r.order.slice().reverse() };
         const changed = saveHeatResult(t, h.id, edited, 1, newId);
         const restored = saveHeatResult(changed, h.id, r, h.savedAt ?? 0, newId);
         expect(standings(restored)).toEqual(standings(t));
@@ -147,12 +153,12 @@ describe('properties over random tournaments', () => {
         const t = randomTournament(seed, n, max).pop()!;
         const table = tableFor(t);
         for (const h of allHeats(t).filter(isPlayed)) {
-          const scores = scoreHeat(h, table)!;
+          const scores = scoreHeat(h, table, t.settings.racesPerHeat)!;
           const r = h.result!;
           if (r.mode === 'per-race') {
             const expected = r.races.reduce((sum, race) => sum + race.reduce((s, _, i) => s + pointsForPlace(table, i + 1), 0), 0);
             expect(scores.reduce((s, x) => s + x.points, 0)).toBe(expected);
-          } else {
+          } else if (r.mode === 'totals') {
             for (const s of scores) expect(s.points).toBe(r.points[s.playerId]);
           }
           expect(scores.map((s) => s.place).sort((a, b) => a - b)).toEqual(scores.map((_, i) => i + 1));
@@ -166,7 +172,7 @@ describe('properties over random tournaments', () => {
     fc.assert(
       fc.property(fc.integer({ min: 1, max: 2 ** 30 }), fc.integer({ min: 8, max: 40 }), fc.constantFrom<HeatMax>(4, 8), (seed, n, max) => {
         const rng = createRng(seed);
-        let t = setup(n, { maxPerHeat: max, qualRounds: 2 });
+        let t = setup(n, { heatSize: max, qualRounds: 2 });
         for (let r = 0; r < 2; r++) {
           const p = previewRound(t, seed + r, newId, 0);
           if (!p.ok) throw new Error(p.error);

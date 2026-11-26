@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { canMovePlayer, movePlayer, scoreOf, swapHeats } from '../engine/tournament';
+import { canMovePlayer, scoreOf } from '../engine/tournament';
 import type { Heat, Tournament } from '../engine/types';
 import { heatTitle } from '../lib/labels';
 import { heatStatus } from '../lib/queue';
 import { go } from '../lib/router';
-import { tNow, useApp, useT } from '../store/store';
+import { useApp, useT } from '../store/store';
 import { Avatar } from './Avatar';
 import { PosBadge } from './Bits';
 import { HeatCup } from './Cup';
-import { IconDown, IconEdit, IconMove, IconUp } from './Icons';
+import { Clover, IconDown, IconEdit, IconMove, IconUp } from './Icons';
 
 interface Props {
   tour: Tournament;
@@ -20,11 +20,13 @@ interface Props {
   advance?: number;
   seeds?: string[];
   index?: number;
+  /** Players who got in as best of the rest (clover mark). */
+  lucky?: Set<string>;
 }
 
-export function HeatCard({ tour, heat, siblings = [], controls = true, advance, seeds, index = 0 }: Props) {
+export function HeatCard({ tour, heat, siblings = [], controls = true, advance, seeds, index = 0, lucky }: Props) {
   const t = useT();
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const [moving, setMoving] = useState<string | null>(null);
   const status = heatStatus(tour, heat);
   const scores = scoreOf(tour, heat);
@@ -54,6 +56,11 @@ export function HeatCard({ tour, heat, siblings = [], controls = true, advance, 
               <span className="heat-player-name">
                 {p.name}
                 {p.tag && <small> {p.tag}</small>}
+                {lucky?.has(r.id) && (
+                  <span className="lucky-mark" title={t('ko.lucky')} aria-label={t('ko.lucky')} role="img">
+                    <Clover size={16} />
+                  </span>
+                )}
               </span>
               {r.place > 0 && <span className="heat-points">{r.points}</span>}
               {adv && <span className="adv-flag" title={t('finals.advances')}>➜</span>}
@@ -71,7 +78,7 @@ export function HeatCard({ tour, heat, siblings = [], controls = true, advance, 
                       role="menuitem"
                       className="btn btn-sm btn-white"
                       onClick={() => {
-                        apply(tNow('action.move', { name: p.name }), (x) => movePlayer(x, r.id, h.id));
+                        dispatch({ type: 'movePlayer', playerId: r.id, heatId: h.id });
                         setMoving(null);
                       }}
                     >
@@ -89,10 +96,10 @@ export function HeatCard({ tour, heat, siblings = [], controls = true, advance, 
         <footer className="heat-foot">
           {!heat.result && (
             <span className="heat-order">
-              <button className="icon-btn" disabled={!prev || !!prev.result} onClick={() => apply(tNow('action.swap'), (x) => swapHeats(x, heat.id, prev.id))} aria-label={t('heat.moveUp')} title={t('heat.moveUp')}>
+              <button className="icon-btn" disabled={!prev || !!prev.result} onClick={() => dispatch({ type: 'swapHeats', a: heat.id, b: prev.id })} aria-label={t('heat.moveUp')} title={t('heat.moveUp')}>
                 <IconUp />
               </button>
-              <button className="icon-btn" disabled={!next || !!next.result} onClick={() => apply(tNow('action.swap'), (x) => swapHeats(x, heat.id, next.id))} aria-label={t('heat.moveDown')} title={t('heat.moveDown')}>
+              <button className="icon-btn" disabled={!next || !!next.result} onClick={() => dispatch({ type: 'swapHeats', a: heat.id, b: next.id })} aria-label={t('heat.moveDown')} title={t('heat.moveDown')}>
                 <IconDown />
               </button>
             </span>

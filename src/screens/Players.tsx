@@ -6,11 +6,11 @@ import { IconEdit, IconPlus, IconTablet } from '../components/Icons';
 import { LateJoiners } from '../components/LateJoiners';
 import { PlayerForm, randomDraft, type PlayerDraft } from '../components/PlayerForm';
 import { AVATARS, COLORS } from '../data/avatars';
-import { addPlayer, addPlayerToHeat, allHeats, deletePlayer, finalsReachForNewPlayer, isNameTaken, lateJoinSlots, normalizeName, reinstatePlayer, updatePlayer, withdrawPlayer } from '../engine/tournament';
+import { allHeats, finalsReachForNewPlayer, isNameTaken, lateJoinSlots, normalizeName } from '../engine/tournament';
 import type { Player, PlayerStatus } from '../engine/types';
 import { heatTitle } from '../lib/labels';
 import { go } from '../lib/router';
-import { newId, tNow, useApp, useT } from '../store/store';
+import { useApp, useT } from '../store/store';
 import { confirmDialog, toast } from '../store/ui';
 
 type Filter = 'all' | PlayerStatus;
@@ -18,7 +18,7 @@ type Filter = 'all' | PlayerStatus;
 export function Players() {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<Player | 'new' | null>(null);
@@ -42,12 +42,12 @@ export function Players() {
 
   const withdraw = async (p: Player) => {
     if (await confirmDialog({ title: t('players.withdraw'), body: t('players.withdrawConfirm', { name: p.name }), danger: true, confirmLabel: t('players.withdraw') })) {
-      apply(tNow('action.withdraw', { name: p.name }), (x) => withdrawPlayer(x, p.id));
+      dispatch({ type: 'withdraw', id: p.id });
     }
   };
   const remove = async (p: Player) => {
     if (await confirmDialog({ title: t('common.delete'), body: t('players.deleteConfirm', { name: p.name }), danger: true, confirmLabel: t('common.delete') })) {
-      apply(tNow('action.deletePlayer', { name: p.name }), (x) => deletePlayer(x, p.id));
+      dispatch({ type: 'deletePlayer', id: p.id });
     }
   };
 
@@ -102,7 +102,7 @@ export function Players() {
                     label={t('players.checkIn')}
                     testId={`checkin-${p.name}`}
                     onChange={(v) => {
-                      apply(tNow('action.checkIn', { name: p.name }), (x) => updatePlayer(x, p.id, { status: v ? 'checked-in' : 'registered', joinedRound: x.rounds.length }));
+                      dispatch({ type: 'setCheckedIn', id: p.id, on: v });
                       if (v) offerLateSlot({ ...p, status: 'checked-in' });
                     }}
                   />
@@ -115,7 +115,7 @@ export function Players() {
                     <button
                       className="btn btn-sm btn-white"
                       onClick={() => {
-                        apply(tNow('action.reinstate', { name: p.name }), (x) => reinstatePlayer(x, p.id));
+                        dispatch({ type: 'reinstate', id: p.id });
                         toast(t('players.reinstated', { name: p.name }));
                       }}
                     >
@@ -155,7 +155,7 @@ export function Players() {
 function EditPlayer({ player, onClose, onAdded }: { player: Player | null; onClose: () => void; onAdded: (p: Player) => void }) {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const [draft, setDraft] = useState<PlayerDraft>(() => (player ? { name: player.name, tag: player.tag, favorite: player.favorite, avatar: player.avatar, color: player.color } : randomDraft()));
   const [checkIn, setCheckIn] = useState(true);
   const [error, setError] = useState('');
@@ -164,16 +164,12 @@ function EditPlayer({ player, onClose, onAdded }: { player: Player | null; onClo
     if (!name) return setError(t('kiosk.err.name-required'));
     if (isNameTaken(tour, name, player?.id)) return setError(t('kiosk.err.name-taken'));
     if (player) {
-      apply(tNow('action.editPlayer', { name }), (x) => updatePlayer(x, player.id, draft));
+      dispatch({ type: 'updatePlayer', id: player.id, patch: draft });
       onClose();
     } else {
-      const id = newId();
-      apply(tNow('action.addPlayer', { name }), (x) => {
-        const r = addPlayer(x, { ...draft, status: checkIn ? 'checked-in' : 'registered' }, id, Date.now());
-        return r.ok ? r.t : x;
-      });
+      const r = dispatch({ type: 'addPlayer', player: { ...draft, status: checkIn ? 'checked-in' : 'registered' } });
       const state = useApp.getState().t!;
-      const added = state.players.find((p) => p.id === id);
+      const added = r.ok ? state.players.find((p) => p.id === r.playerId) : undefined;
       const reach = finalsReachForNewPlayer(state);
       if (added && !reach.ok) toast(t('signup.noFinals', { needed: reach.needed, possible: reach.possible }));
       if (added) onAdded(added);
@@ -203,27 +199,18 @@ function EditPlayer({ player, onClose, onAdded }: { player: Player | null; onClo
 
 function QuickAdd({ onClose }: { onClose: () => void }) {
   const t = useT();
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const [text, setText] = useState('');
   const [checkIn, setCheckIn] = useState(false);
   const add = () => {
-    const lines = text.split(/\r?\n/);
-    let added = 0;
-    const skipped: string[] = [];
-    apply(tNow('action.quickAdd'), (x) => {
-      let cur = x;
-      lines.forEach((line) => {
-        const name = normalizeName(line);
-        if (!name) return;
-        const i = cur.players.length;
-        const r = addPlayer(cur, { name, avatar: AVATARS[i % AVATARS.length].id, color: COLORS[(i * 5) % (COLORS.length - 1)], status: checkIn ? 'checked-in' : 'registered' }, newId(), Date.now());
-        if (r.ok) {
-          cur = r.t;
-          added++;
-        } else skipped.push(name);
-      });
-      return cur;
+    const names = text.split(/\r?\n/).map(normalizeName).filter(Boolean);
+    const start = useApp.getState().t!.players.length;
+    const r = dispatch({
+      type: 'addPlayers',
+      players: names.map((name, k) => ({ name, avatar: AVATARS[(start + k) % AVATARS.length].id, color: COLORS[((start + k) * 5) % (COLORS.length - 1)], status: checkIn ? 'checked-in' : 'registered' })),
     });
+    const added = r.ok ? (r.added ?? 0) : 0;
+    const skipped = r.ok ? (r.skipped ?? []) : names;
     toast(t('players.quickAdded', { n: added }), 'success');
     if (skipped.length) toast(t('players.quickSkipped', { names: skipped.join(', ') }), 'error');
     onClose();
@@ -253,7 +240,7 @@ function QuickAdd({ onClose }: { onClose: () => void }) {
 function LateOffer({ player, onClose }: { player: Player; onClose: () => void }) {
   const t = useT();
   const tour = useApp((s) => s.t)!;
-  const apply = useApp((s) => s.apply);
+  const dispatch = useApp((s) => s.dispatch);
   const slots = lateJoinSlots(tour);
   return (
     <Modal title={t('players.lateOfferTitle', { name: player.name })} onClose={onClose} footer={<button className="btn btn-white" onClick={onClose} data-testid="late-later">{t('players.lateLater')}</button>}>
@@ -264,11 +251,11 @@ function LateOffer({ player, onClose }: { player: Player; onClose: () => void })
             key={h.id}
             className="btn btn-gold"
             onClick={() => {
-              apply(tNow('action.lateJoin', { name: player.name }), (x) => addPlayerToHeat(x, player.id, h.id));
+              dispatch({ type: 'lateJoin', playerId: player.id, heatId: h.id });
               onClose();
             }}
           >
-            {heatTitle(t, tour, h.id)} · {h.playerIds.length}/{tour.settings.maxPerHeat}
+            {heatTitle(t, tour, h.id)} · {h.playerIds.length}/{tour.settings.heatSize}
           </button>
         ))}
       </div>

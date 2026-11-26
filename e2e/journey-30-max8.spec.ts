@@ -29,26 +29,28 @@ test.describe('[journey] 30 players, max 8', () => {
   test('[REQ-UI-001] setup wizard collects all settings and shows a live time estimate', async () => {
     await page.goto(url());
     await page.click('[data-testid=new-tournament]');
-    await expect(page.locator('.wizard-step')).toHaveCount(5);
+    await expect(page.locator('.wizard-step')).toHaveCount(4);
     const estimate = page.locator('.estimate-big');
-    const before = await estimate.textContent();
     await page.fill('[data-testid=setup-name]', 'Kart Cup Night');
-    await page.locator('.field:has-text("Expected players") input[type=range]').fill('12');
-    await expect(estimate).not.toHaveText(before ?? '');
-    await page.locator('.field:has-text("Expected players") input[type=range]').fill('30');
-    for (const step of ['Format', 'Points', 'Finals', 'Tracks']) {
+    for (const step of ['Format', 'Scoring', 'Tracks']) {
       await page.click('[data-testid=wizard-next]');
       await expect(page.locator('.wizard-step.on')).toContainText(step);
     }
     await page.click('.wizard-step:has-text("Format")');
-    await expect(page.locator('label.choice:has-text("8 per heat")')).toBeVisible();
-    await expect(page.locator('label.choice:has-text("Console totals")')).toBeVisible();
-    await page.click('.wizard-step:has-text("Points")');
+    await page.click('[data-testid=heat-size-8]');
+    await page.click('[data-testid=format-classic]');
+    await page.locator('[data-testid=expected-players]').fill('12');
+    const before = await estimate.textContent();
+    await page.locator('[data-testid=expected-players]').fill('30');
+    await expect(estimate).not.toHaveText(before ?? '');
+    await page.click('.wizard-step:has-text("Scoring")');
+    await expect(page.locator('[data-testid=entry-totals]')).toBeVisible();
+    await page.click('[data-testid=entry-per-race]');
     await expect(page.locator('.points-table.is-active .points-cell input').first()).toHaveValue('15');
     await page.click('.wizard-step:has-text("Tracks")');
     await page.click('[data-testid=create-tournament]');
     await expect(page.locator('.players')).toBeVisible();
-    expect((await state(page)).settings).toMatchObject({ name: 'Kart Cup Night', maxPerHeat: 8, racesPerHeat: 4, qualRounds: 3 });
+    expect((await state(page)).settings).toMatchObject({ name: 'Kart Cup Night', format: 'classic', heatSize: 8, racesPerHeat: 4, qualRounds: 3, entryMode: 'per-race' });
   });
 
   test('[REQ-UI-003] quick add skips duplicates and blanks and can check everyone in', async () => {
@@ -124,7 +126,7 @@ test.describe('[journey] 30 players, max 8', () => {
   test('[REQ-UI-008] console totals with tie-order arrows; the mode can be switched per heat', async () => {
     await page.goto(url());
     await page.click('[data-testid=home-enter]');
-    await page.click('[data-testid=switch-mode]');
+    await page.click('[data-testid=mode-totals]');
     await enterTotals(page, perm, true);
     await expect(page.locator('.tie-arrows').first()).toBeVisible();
     await page.click('[data-testid=save-heat]');
@@ -339,7 +341,8 @@ test.describe('[journey] 30 players, max 8', () => {
 
   test('[REQ-UI-018][REQ-DATA-019] settings: max per heat locked, exports, reset needs the typed name', async () => {
     await page.goto(url('settings'));
-    await expect(page.locator('label.choice:has-text("4 per heat") input')).toBeDisabled();
+    await expect(page.locator('[data-testid=heat-size-4] input')).toBeDisabled();
+    await expect(page.locator('[data-testid=format-knockout] input')).toBeDisabled();
     const [json] = await Promise.all([page.waitForEvent('download'), page.click('[data-testid=export-json]')]);
     expect(json.suggestedFilename()).toMatch(/^kart-cup-night-\d{4}-\d{2}-\d{2}-backup\.json$/);
     await page.goto(url('standings'));

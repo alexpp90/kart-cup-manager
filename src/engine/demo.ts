@@ -1,8 +1,9 @@
 import { AVATARS, COLORS } from '../data/avatars';
 import { pointsForPlace, orderFromTotals } from './points';
 import { createRng, shuffle, type Rng } from './rng';
-import type { Heat, HeatResult, Settings } from './types';
-import { addPlayer, commitRound, createTournament, defaultSettings, previewRound, randomCupFor, saveHeatResult, setHeatCup, type IdGen } from './tournament';
+import { suddenDeathKey } from './ranking';
+import type { Format, Heat, HeatResult, Settings } from './types';
+import { addPlayer, canGenerateRound, commitRound, resolveSuddenDeath, createTournament, defaultSettings, previewRound, randomCupFor, saveHeatResult, setHeatCup, type IdGen } from './tournament';
 import type { Tournament } from './types';
 
 export const DEMO_NAMES = [
@@ -22,10 +23,11 @@ export function simulateResult(heat: Heat, settings: Settings, skill: (id: strin
       .map((x) => x.id),
   );
   if (settings.entryMode === 'per-race') return { mode: 'per-race', races };
-  const table = settings.maxPerHeat === 8 ? settings.points8 : settings.points4;
   const points: Record<string, number> = Object.fromEntries(heat.playerIds.map((id) => [id, 0]));
-  for (const r of races) r.forEach((id, i) => (points[id] += pointsForPlace(table, i + 1)));
-  return { mode: 'totals', points, order: orderFromTotals(points, heat.playerIds, races[races.length - 1]) };
+  for (const r of races) r.forEach((id, i) => (points[id] += pointsForPlace(settings.points, i + 1)));
+  const order = orderFromTotals(points, heat.playerIds, races[races.length - 1]);
+  if (settings.entryMode === 'ranking') return { mode: 'ranking', order };
+  return { mode: 'totals', points, order };
 }
 
 export function skillFor(id: string): number {
@@ -34,10 +36,10 @@ export function skillFor(id: string): number {
   return (h % 1000) / 100;
 }
 
-/** 30 fake players and one fully simulated qualifying round. */
-export function buildDemo(newId: IdGen, now: number, opts: { players?: number; max?: 4 | 8; roundsPlayed?: number } = {}): Tournament {
+/** 30 fake players and one fully simulated round (knockout cups by default). */
+export function buildDemo(newId: IdGen, now: number, opts: { players?: number; max?: number; roundsPlayed?: number; format?: Format } = {}): Tournament {
   const rng = createRng(now);
-  const settings: Settings = { ...defaultSettings(), name: 'Demo Kart Cup', maxPerHeat: opts.max ?? 8, trackMode: 'random-cup' };
+  const settings: Settings = { ...defaultSettings(), name: 'Demo Kart Cup', format: opts.format ?? 'knockout', heatSize: opts.max ?? 8, trackMode: 'random-cup', expectedPlayers: opts.players ?? 30 };
   let t = createTournament(settings, newId(), now);
   const names = shuffle(DEMO_NAMES, rng).slice(0, opts.players ?? 30);
   names.forEach((name, i) => {
@@ -51,6 +53,12 @@ export function buildDemo(newId: IdGen, now: number, opts: { players?: number; m
     for (const h of p.round.heats) {
       t = setHeatCup(t, h.id, randomCupFor(t, Math.floor(rng() * 2 ** 31)));
       t = saveHeatResult(t, h.id, simulateResult(h, settings, skillFor, rng), now, newId);
+    }
+    // A tie on a knockout cut line is settled as if the sudden death had been raced.
+    for (let guard = 0; guard < 5; guard++) {
+      const blocked = canGenerateRound(t);
+      if (!blocked || blocked.ok || blocked.error !== 'tie' || !blocked.tie) break;
+      t = resolveSuddenDeath(t, { key: suddenDeathKey(blocked.tie), order: shuffle(blocked.tie, rng) }, newId);
     }
   }
   return t;

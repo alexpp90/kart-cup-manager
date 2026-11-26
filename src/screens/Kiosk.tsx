@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Coin, Flag, ItemBox, Star } from '../components/Icons';
 import { PlayerForm, randomDraft, type PlayerDraft } from '../components/PlayerForm';
-import { addPlayer, finalsReachForNewPlayer, isNameTaken, phaseOf } from '../engine/tournament';
+import { finalsReachForNewPlayer, isNameTaken, registrationOpen } from '../engine/tournament';
 import { go } from '../lib/router';
 import { sound } from '../lib/sound';
-import { newId, tNow, useApp, useT } from '../store/store';
+import { useApp, useT } from '../store/store';
 
 export function Kiosk() {
   const t = useT();
@@ -13,7 +13,7 @@ export function Kiosk() {
   const [draft, setDraft] = useState<PlayerDraft>(randomDraft);
   const [error, setError] = useState('');
   const [welcome, setWelcome] = useState<(PlayerDraft & { noFinals?: { needed: number; possible: number } }) | null>(null);
-  const closed = tour.finals !== null;
+  const closed = !registrationOpen(tour);
   const count = tour.players.filter((p) => p.status !== 'withdrawn').length;
 
   useEffect(() => {
@@ -28,22 +28,17 @@ export function Kiosk() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    let result: ReturnType<typeof addPlayer> | null = null;
-    useApp.getState().apply(tNow('action.addPlayer', { name: draft.name.trim() }), (x) => {
-      result = addPlayer(x, { ...draft, status: x.settings.kioskAutoCheckIn ? 'checked-in' : 'registered' }, newId(), Date.now());
-      return result.ok ? result.t : x;
-    });
-    const r = result as ReturnType<typeof addPlayer> | null;
-    if (!r) return;
+    const r = useApp.getState().dispatch({ type: 'addPlayer', player: { ...draft, status: tour.settings.kioskAutoCheckIn ? 'checked-in' : 'registered' } });
     if (!r.ok) {
-      setError(t(`kiosk.err.${r.error}`));
+      setError(t(r.error === 'name-taken' ? 'kiosk.err.name-taken' : 'kiosk.err.name-required'));
       document.querySelector<HTMLInputElement>('[data-testid=player-name]')?.focus();
       sound.error();
       return;
     }
     sound.fanfare();
     const reach = finalsReachForNewPlayer(useApp.getState().t!);
-    setWelcome({ ...draft, name: r.player.name, noFinals: reach.ok ? undefined : reach });
+    const name = r.t.players.find((p) => p.id === r.playerId)?.name ?? draft.name;
+    setWelcome({ ...draft, name, noFinals: reach.ok ? undefined : reach });
     setDraft(randomDraft());
   };
 
@@ -59,7 +54,7 @@ export function Kiosk() {
         <h1 className="display kiosk-title">{t('kiosk.title')}</h1>
         <p className="kiosk-sub">{t('kiosk.subtitle')}</p>
       </header>
-      {closed || phaseOf(tour) === 'podium' ? (
+      {closed ? (
         <div className="card kiosk-card">
           <p className="now-title">{t('kiosk.closed')}</p>
         </div>

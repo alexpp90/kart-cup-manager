@@ -1,4 +1,5 @@
-import { isPlayed, phaseOf } from '../engine/tournament';
+import { knockoutProgress } from '../engine/timing';
+import { isPlayed, phaseOf, roundComplete } from '../engine/tournament';
 import type { Tournament } from '../engine/types';
 import { useT } from '../store/store';
 import { Flag } from './Icons';
@@ -8,8 +9,24 @@ export function PhaseBar({ t: tour }: { t: Tournament }) {
   const phase = phaseOf(tour);
   const steps: { key: string; label: string; state: 'done' | 'current' | 'todo'; sub?: string }[] = [];
   steps.push({ key: 'reg', label: t('phase.registration'), state: phase === 'registration' ? 'current' : 'done' });
-  const lastDone = tour.rounds.length > 0 && tour.rounds[tour.rounds.length - 1].heats.every(isPlayed);
-  for (let i = 0; i < tour.settings.qualRounds; i++) {
+  const lastDone = tour.rounds.length > 0 && roundComplete(tour.rounds[tour.rounds.length - 1]);
+  const format = tour.settings.format;
+  if (format !== 'classic') {
+    const count = format === 'league' ? Math.max(tour.settings.leagueCups, tour.rounds.length) : knockoutProgress(tour).rounds;
+    for (let i = 0; i < count; i++) {
+      const r = tour.rounds[i];
+      const pending = !r && phase === 'qualifying' && lastDone && i === tour.rounds.length;
+      const isFinal = format === 'knockout' && (r ? r.final : i === count - 1);
+      steps.push({
+        key: `r${i}`,
+        label: format === 'league' ? t('phase.cup', { n: i + 1 }) : isFinal ? t('stage.final') : t('phase.round', { n: i + 1 }),
+        state: r ? (roundComplete(r) ? 'done' : 'current') : pending ? 'current' : 'todo',
+        sub: r ? `${r.heats.filter(isPlayed).length}/${r.heats.length}` : undefined,
+      });
+    }
+    steps.push({ key: 'pod', label: t('phase.podium'), state: phase === 'podium' ? 'current' : 'todo' });
+  }
+  for (let i = 0; i < (format === 'classic' ? tour.settings.qualRounds : 0); i++) {
     const r = tour.rounds[i];
     // The next round to generate counts as "current" once the previous one is complete.
     const pending = !r && phase === 'qualifying' && lastDone && i === tour.rounds.length;
@@ -20,8 +37,10 @@ export function PhaseBar({ t: tour }: { t: Tournament }) {
       sub: r ? `${r.heats.filter(isPlayed).length}/${r.heats.length}` : undefined,
     });
   }
-  steps.push({ key: 'fin', label: t('phase.finals'), state: phase === 'finals' ? 'current' : phase === 'podium' ? 'done' : 'todo' });
-  steps.push({ key: 'pod', label: t('phase.podium'), state: phase === 'podium' ? 'current' : 'todo' });
+  if (format === 'classic') {
+    steps.push({ key: 'fin', label: t('phase.finals'), state: phase === 'finals' ? 'current' : phase === 'podium' ? 'done' : 'todo' });
+    steps.push({ key: 'pod', label: t('phase.podium'), state: phase === 'podium' ? 'current' : 'todo' });
+  }
   return (
     <nav className="phasebar" aria-label={t('phase.label')}>
       <ol>

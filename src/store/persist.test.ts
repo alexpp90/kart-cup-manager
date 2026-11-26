@@ -3,7 +3,8 @@
 // imported, so each test stubs the globals and imports a fresh copy.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDemo } from '../engine/demo';
-import { addPlayer, createTournament, defaultSettings } from '../engine/tournament';
+import { readFileSync } from 'node:fs';
+import { addPlayer, createTournament, defaultSettings, finalResults, standings } from '../engine/tournament';
 import type { Tournament } from '../engine/types';
 import {
   backupFileName, backupPayload, CORRUPT_KEY, csvFileName, CURRENT_VERSION, migrateTournament, parseBackup, parsePersisted,
@@ -162,15 +163,15 @@ describe('recovery', () => {
     const broken = structuredClone(t) as Record<string, any>;
     delete broken.suddenDeath;
     delete broken.rngCounter;
-    delete broken.settings.points4;
+    delete broken.settings.cupOverheadMinutes;
     delete broken.players[0].tag;
     broken.players[1].status = 'nonsense';
     const m = migrateTournament(broken);
     expect(m.ok).toBe(true);
     if (!m.ok) return;
-    expect(m.repairs).toEqual(expect.arrayContaining(['suddenDeath', 'rngCounter', 'settings.points4', 'players[0].tag', 'players[1].status']));
+    expect(m.repairs).toEqual(expect.arrayContaining(['suddenDeath', 'rngCounter', 'settings.cupOverheadMinutes', 'players[0].tag', 'players[1].status']));
     expect(m.t.suddenDeath).toEqual([]);
-    expect(m.t.settings.points4).toEqual(defaultSettings().points4);
+    expect(m.t.settings.cupOverheadMinutes).toBe(defaultSettings().cupOverheadMinutes);
     expect(m.t.players[0].tag).toBe('');
     expect(migrateTournament({ ...t, players: 'nope' })).toEqual({ ok: false, error: 'invalid' });
     expect(migrateTournament({ ...t, players: [{ name: 'no id' }] })).toEqual({ ok: false, error: 'invalid' });
@@ -191,10 +192,10 @@ describe('recovery', () => {
     expect(t.version).toBe(CURRENT_VERSION);
     const { version: _v, ...unversioned } = t;
     const m = migrateTournament(unversioned);
-    expect(m.ok && m.t.version).toBe(1);
+    expect(m.ok && m.t.version).toBe(CURRENT_VERSION);
     expect(m.ok && m.repairs).toContain('version');
     expect(migrateTournament({ ...t, version: CURRENT_VERSION + 1 })).toEqual({ ok: false, error: 'newer', version: CURRENT_VERSION + 1 });
-    expect(parseBackup(JSON.stringify(backupPayload({ ...t, version: 99 as 1 }, new Date(0))))).toEqual({ ok: false, error: 'newer', version: 99 });
+    expect(parseBackup(JSON.stringify(backupPayload({ ...t, version: 99 as 2 }, new Date(0))))).toEqual({ ok: false, error: 'newer', version: 99 });
     // Old envelope with wall-clock change tracking keeps its unsaved flag.
     const old = parsePersisted(JSON.stringify({ t, history: [], lastChangeAt: 5, lastExportAt: 2 }));
     expect(old.kind === 'ok' && old.data.changeSeq > old.data.exportSeq).toBe(true);
@@ -228,7 +229,7 @@ describe('backups', () => {
     const t = small();
     const b = backupPayload(t, new Date('2026-11-25T20:00:00Z'));
     expect(Object.keys(b)).toEqual(['app', 'version', 'exportedAt', 'tournament']);
-    expect(b).toMatchObject({ app: 'kart-cup-manager', version: 1, exportedAt: '2026-11-25T20:00:00.000Z' });
+    expect(b).toMatchObject({ app: 'kart-cup-manager', version: CURRENT_VERSION, exportedAt: '2026-11-25T20:00:00.000Z' });
     expect(backupFileName({ name: 'Kart Cup: Nacht 🏁 Ölberg', date: '2026-11-28' })).toBe('kart-cup-nacht-olberg-2026-11-28-backup.json');
     expect(csvFileName({ name: '  ' })).toBe('tournament-standings.csv');
   });
@@ -364,5 +365,59 @@ describe('demo data', () => {
     expect(t.players).toHaveLength(30);
     expect(t.rounds).toHaveLength(1);
     expect(t.rounds[0].heats.every((h) => h.result && h.cup)).toBe(true);
+  });
+});
+
+describe('schema version 2', () => {
+  // Real tournaments written by the version 1 app (commit 1e62f5b): 30 at max 8 per race,
+  // 11 at max 4 with totals and Last Chance, 13 at max 8 with Last Chance; mid-qualifying and finished.
+  const fixtures = JSON.parse(readFileSync(new URL('./fixtures/v1-tournaments.json', import.meta.url), 'utf8')) as {
+    mid: Record<string, any>;
+    midStandings: unknown;
+    done: Record<string, any>;
+    standings: unknown;
+    final: unknown;
+  }[];
+
+  it('[REQ-DATA-023] version 1 data opens as Classic with its heat size, points table and timing', () => {
+    for (const f of fixtures) {
+      const m = migrateTournament(f.done);
+      expect(m.ok).toBe(true);
+      if (!m.ok) continue;
+      expect(m.repairs).toEqual([]);
+      const s = m.t.settings as unknown as Record<string, unknown>;
+      expect(m.t.version).toBe(2);
+      expect(s.format).toBe('classic');
+      expect(s.heatSize).toBe(f.done.settings.maxPerHeat);
+      expect(s.points).toEqual(f.done.settings.maxPerHeat === 4 ? f.done.settings.points4 : f.done.settings.points8);
+      expect(s.cupOverheadMinutes).toBe(0);
+      expect(s.minutesPerRace).toBe(f.done.settings.minutesPerRace);
+      expect('maxPerHeat' in s || 'points8' in s || 'points4' in s).toBe(false);
+    }
+  });
+
+  it('[REQ-DATA-023] version 1 tournaments compute the same standings and finals after migration', () => {
+    for (const f of fixtures) {
+      const mid = migrateTournament(f.mid);
+      const done = migrateTournament(f.done);
+      if (!mid.ok || !done.ok) throw new Error('migration failed');
+      expect(standings(mid.t)).toEqual(f.midStandings);
+      expect(standings(done.t)).toEqual(f.standings);
+      expect(finalResults(done.t)).toEqual(f.final);
+    }
+  });
+
+  it('[REQ-DATA-023] version 1 backups import, and invalid v2 format fields are repaired', () => {
+    const f = fixtures[1];
+    const r = parseBackup(JSON.stringify({ app: 'kart-cup-manager', exportedAt: '2026-01-01T00:00:00.000Z', tournament: f.done }));
+    expect(r.ok && r.t.settings.heatSize).toBe(4);
+    const bad = structuredClone(small()) as unknown as Record<string, any>;
+    bad.settings.format = 'tetris';
+    bad.settings.heatSize = 12;
+    bad.settings.entryMode = 'telepathy';
+    bad.settings.fill = 42;
+    const m = migrateTournament(bad);
+    expect(m.ok && m.repairs).toEqual(expect.arrayContaining(['settings.heatSize', 'settings.format', 'settings.entryMode', 'settings.fill']));
+    expect(m.ok && m.t.settings).toMatchObject({ heatSize: 8, format: defaultSettings().format, entryMode: defaultSettings().entryMode, fill: defaultSettings().fill });
   });
 });

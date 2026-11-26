@@ -3,6 +3,7 @@ import type { Tournament } from '../engine/types';
 import type { Key, Lang, Params } from '../i18n';
 import { translate } from '../i18n';
 import { randomId } from '../engine/rng';
+import { applyCommand, commandLabel, type Command, type CommandResult } from '../engine/commands';
 import { toast } from './ui';
 import {
   CORRUPT_KEY,
@@ -45,6 +46,8 @@ export interface AppState extends Persisted {
   fromOtherWindow: boolean;
   /** Apply a pure transition and remember the previous state for undo. */
   apply: (label: string, fn: (t: Tournament) => Tournament) => void;
+  /** Apply a command (see engine/commands.ts); unchanged state on failure. */
+  dispatch: (cmd: Command) => CommandResult;
   replace: (label: string, t: Tournament | null) => void;
   undo: () => string | null;
   markExported: () => void;
@@ -139,6 +142,19 @@ export const useApp = create<AppState>((set, get) => ({
     const next = fn(t);
     if (next === t) return;
     set({ t: next, history: [...history, { label, t }].slice(-HISTORY_LIMIT), changeSeq: changeSeq + 1, fromOtherWindow: false });
+  },
+  dispatch: (cmd) => {
+    get().syncFromStorage();
+    const t = get().t;
+    if (!t) return { ok: false, error: 'no-tournament' };
+    const r = applyCommand(t, cmd, { now: Date.now(), newId });
+    if (r.ok && r.t !== t) {
+      const l = commandLabel(t, cmd);
+      const label = translate(get().prefs.lang, l.key as Key, l.params);
+      const { history, changeSeq } = get();
+      set({ t: r.t, history: [...history, { label, t }].slice(-HISTORY_LIMIT), changeSeq: changeSeq + 1, fromOtherWindow: false });
+    }
+    return r;
   },
   replace: (label, t) => {
     get().syncFromStorage();

@@ -104,3 +104,18 @@ export const IconShuffle = ui('M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5'
 export const IconInfo = ui('M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01');
 export const IconPodium = ui('M8 21V11h8v10M2 21v-6h6M16 21v-8h6v8M1 21h22M12 3l1.2 2.4 2.6.4-1.9 1.8.5 2.6L12 9l-2.4 1.2.5-2.6-1.9-1.8 2.6-.4z');
 export const IconMove = ui('M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20');
+
+/** Four-leaf clover: the "lucky loser" mark for fill-ups. */
+export function Clover({ size = 18, ...p }: P) {
+  return (
+    <svg viewBox="0 0 32 32" {...base(size, p)}>
+      <g fill="#2DB84B" stroke="#14213D" strokeWidth="2">
+        <path d="M16 15c-1.5-4.5-7.5-6-8.5-2s3.5 5 8.5 2Z" />
+        <path d="M16 15c4.5-1.5 6-7.5 2-8.5s-5 3.5-2 8.5Z" />
+        <path d="M16 15c1.5 4.5 7.5 6 8.5 2s-3.5-5-8.5-2Z" />
+        <path d="M16 15c-4.5 1.5-6 7.5-2 8.5s5-3.5 2-8.5Z" />
+      </g>
+      <path d="M16 15c2 4 3 8 2 13" fill="none" stroke="#14213D" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}

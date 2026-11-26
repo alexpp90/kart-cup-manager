@@ -1,6 +1,6 @@
 # Kart Cup Manager
 
-A local tournament app for kart-racing nights on **one console**: sign-ups at a kiosk, balanced qualifying heats, live standings, a seeded finals bracket, a TV "big screen" and a podium ceremony with confetti. It runs on one laptop with no backend, no accounts and no internet.
+A local tournament app for kart-racing nights on **one console**: sign-ups at a kiosk, three formats (knockout cups, a league, or classic qualifying + finals) with a planner that shows how long the night takes, live standings, a TV "big screen" and a podium ceremony with confetti. It runs on one laptop with no backend, no accounts and no internet.
 
 ![Home screen: the heat that is racing now, with its cup and the queue](docs/screenshots/home-now-racing.webp)
 
@@ -83,7 +83,11 @@ npm run trace:check  # requirements × tests → docs/traceability.md; fails on 
 ## Organizer cheat sheet (event day)
 
 **Before guests arrive**
-1. Open `index.html` on the laptop. Choose **New tournament** and walk through the 5 setup steps. The time estimate on the right updates as you go.
+1. Open `index.html` on the laptop. Choose **New tournament** and walk through the 4 setup steps. In **Format**, set the expected players and the heat size (number of controllers). The app suggests a format:
+   * **League** when everyone fits into one heat: everyone races every cup, most points wins.
+   * **Knockout cups** otherwise: the top X of each heat go on; free places go to the best of the rest (🍀 lucky losers) or to a Last Chance heat; the last round is the final.
+   * **Classic**: qualifying rounds by average, then finals.
+   The plan on the right shows every round, the total time and, with a start time, when the night ends. Over 3 hours (or over the time you have) it lists shorter options you can apply with one click.
 2. Already have a guest list? **Players → Quick add**, paste the names (one per line).
 3. Plug in the TV. Press the **TV icon** in the top bar, drag the new window to the TV and **double-click it for fullscreen**. It updates by itself and has no buttons.
 4. Optional: open the **Kiosk** (tablet icon) in a window on a second screen attached to the laptop so people can sign up themselves ("Join the Race!"). A separate tablet does not work: it would keep its own data.
@@ -94,20 +98,22 @@ npm run trace:check  # requirements × tests → docs/traceability.md; fails on 
 * Only checked-in players are put into heats.
 
 **Each round**
-1. Home → **Generate Round N** → look at the preview → *Regenerate* if you don't like it → **Save round**.
+1. Home → **Draw round 1** / **Generate Round N** / **Start cup N** → look at the preview → *Redraw* if you like (round 1 and classic rounds) → **Save round**. Later knockout rounds are seeded from the results, so there is nothing to redraw. A tie on a knockout cut line asks for a sudden death first.
 2. The Home screen shows **Now racing** in big letters. Press **Spin the cup** (if you use the cup picker); the TV shows the roulette too.
 3. After the heat: **Enter results**.
    * *Tap mode:* tap the racers in finishing order after every race (or press 1–8). The last one fills in by itself, and the next race opens automatically.
-   * *Console totals:* type the cup points from the console. With equal points, use the arrows to set who was ahead.
+   * *Console totals* (default): type the cup points from the console. With equal points, use the arrows to set who was ahead.
+   * *Final order only:* tap the final cup order once.
 4. **Save heat**. The next heat moves to "Now racing". Repeat until the round is complete.
 * Wrong result? Open the heat again (**Edit results**); all standings recompute.
 * Need a different heat order? Use the ▲▼ buttons on unplayed heat cards. To move a single racer, use the ✥ button next to their name.
 
 **Late arrivals & drop-outs**
-* Late arrival: add them (kiosk or *Players → Add players*). They race from the next round. If a heat in the current round still has a free slot, the app offers to put them in right away.
+* Late arrival: add them (kiosk or *Players → Add players*). Classic and league: they race from the next round/cup. Knockout: only while a round-1 heat still has a free seat. If a heat has a free slot, the app offers to put them in right away.
+* Home shows the time per heat measured so far, the heats left and the expected end.
 * Someone has to leave: *Players → Withdraw*. They leave future heats, their results stay.
 
-**Finals**
+**Finals (classic)**
 1. After the last qualifying round: Home → **Set up the finals**. The bracket is chosen automatically (you can edit it).
 2. If two players are tied exactly on the cut line, the app asks for a **sudden death**: race one race, tap the finishing order, save.
 3. **Start finals** → play the heats from Home as before. The bracket fills itself.

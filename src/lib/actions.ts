@@ -1,6 +1,6 @@
-import { standingsCsv } from '../engine/csv';
+import { standingsCsv, tableCsv } from '../engine/csv';
 import { buildDemo } from '../engine/demo';
-import { finalResults, standings } from '../engine/tournament';
+import { finalResults, knockoutTable, leagueTable, standings } from '../engine/tournament';
 import { newId, tNow, useApp } from '../store/store';
 import { confirmDialog, toast } from '../store/ui';
 import { backupFileName, backupPayload, csvFileName, parseBackup, type BackupParse } from '../store/persist';
@@ -17,6 +17,32 @@ export function exportBackup() {
 export function exportCsv() {
   const t = useApp.getState().t;
   if (!t) return;
+  const name = (id: string) => t.players.find((p) => p.id === id);
+  const status = (id: string) => tNow(`players.status.${name(id)?.status ?? 'active'}`);
+  if (t.settings.format === 'knockout') {
+    const rounds = t.rounds.map((_, i) => tNow('csv.roundN', { n: i + 1 }));
+    const headers = [...tNow('csv.koHeaders').split(','), ...rounds.flatMap((r) => [`${r} ${tNow('csv.place')}`, `${r} ${tNow('csv.points')}`])];
+    const rows = knockoutTable(t).map((r) => [
+      r.position,
+      name(r.playerId)?.name ?? '?',
+      name(r.playerId)?.tag ?? '',
+      r.reached + 1,
+      r.lucky ? tNow('common.yes') : tNow('common.no'),
+      status(r.playerId),
+      ...r.cells.flatMap((c) => [c?.place ?? '', c?.points ?? '']),
+    ]);
+    downloadText(csvFileName(t.settings), tableCsv(headers, rows), 'text/csv;charset=utf-8');
+    return;
+  }
+  if (t.settings.format === 'league') {
+    const cups = Math.max(t.settings.leagueCups, t.rounds.length);
+    const headers = [...tNow('csv.leagueHeaders').split(','), ...Array.from({ length: cups }, (_, i) => tNow('league.cupShort', { n: i + 1 }))];
+    const rows = leagueTable(t)
+      .filter((r) => r.cups > 0)
+      .map((r) => [r.rank, name(r.playerId)?.name ?? '?', name(r.playerId)?.tag ?? '', r.cups, r.total, r.wins, status(r.playerId), ...r.perCup.map((v) => v ?? '')]);
+    downloadText(csvFileName(t.settings), tableCsv(headers, rows), 'text/csv;charset=utf-8');
+    return;
+  }
   const fr = finalResults(t);
   const places = fr ? new Map(fr.map((r) => [r.playerId, r.place])) : undefined;
   const headers = tNow('csv.headers').split(',');

@@ -5,28 +5,19 @@ import { HeatCup } from '../components/Cup';
 import { Flag, IconDownload, IconList, IconTablet, IconTv, ItemBox, Trophy } from '../components/Icons';
 import { LateJoiners } from '../components/LateJoiners';
 import { RoundPreview } from '../components/RoundPreview';
-import { splitHeatSizes } from '../engine/heats';
-import { estimateDuration } from '../engine/schedule';
-import { canGenerateRound, currentRound, finalResults, finalsHeats, phaseOf, roundCandidates, roundComplete, standings, upcoming } from '../engine/tournament';
+import { SuddenDeathCard } from '../components/SuddenDeath';
+import { makePlan } from '../engine/plan';
+import { estimateRemaining } from '../engine/timing';
+import { canGenerateRound, currentRound, finalResults, finalsHeats, knockoutTable, leagueTable, leagueTie, phaseOf, roundCandidates, roundComplete, roundHeats, roundOutcome, standings, upcoming } from '../engine/tournament';
 import type { Heat, Tournament } from '../engine/types';
 import { exportBackup } from '../lib/actions';
-import { formatDuration, heatTitle } from '../lib/labels';
+import { clockTime, formatDuration, heatTitle, names, nextRoundLabel, roundLabel } from '../lib/labels';
 import { bigScreenUrl, go } from '../lib/router';
 import { useApp, useT } from '../store/store';
 
-export function remainingMinutes(tour: Tournament): number {
-  const s = tour.settings;
-  const perHeat = s.racesPerHeat * s.minutesPerRace + s.changeoverMinutes;
-  const split = splitHeatSizes(roundCandidates(tour).length, s.maxPerHeat);
-  const perRound = split.ok ? split.sizes.length : 0;
-  let heats = upcoming(tour).length;
-  if (!tour.finals) {
-    heats += Math.max(0, s.qualRounds - tour.rounds.length) * perRound;
-    heats += estimateDuration(roundCandidates(tour).length, s).finalsHeats;
-  } else {
-    heats += tour.finals.stages.filter((st) => !st.heats.length).reduce((a, st) => a + st.config.fieldSize / st.config.heatSize, 0);
-  }
-  return heats * perHeat;
+/** Minutes left: heats still to race × the measured time per heat. */
+export function remainingMinutes(tour: Tournament, now = Date.now()): number {
+  return estimateRemaining(tour, now).minutesLeft;
 }
 
 export function Home() {
@@ -40,8 +31,17 @@ export function Home() {
   const generateBlocked = canGenerateRound(tour);
   const round = currentRound(tour);
   const byId = new Map(tour.players.map((p) => [p.id, p]));
-  const heatsDone = tour.finals ? finalsHeats(tour).filter((h) => h.result).length : round ? round.heats.filter((h) => h.result).length : 0;
-  const heatsTotal = tour.finals ? finalsHeats(tour).length : round?.heats.length ?? 0;
+  const roundQueue = round ? roundHeats(round) : [];
+  const heatsDone = tour.finals ? finalsHeats(tour).filter((h) => h.result).length : roundQueue.filter((h) => h.result).length;
+  const heatsTotal = tour.finals ? finalsHeats(tour).length : roundQueue.length;
+  const format = tour.settings.format;
+  const lang = useApp((s) => s.prefs.lang);
+  const est = estimateRemaining(tour, Date.now());
+  const koTie = format === 'knockout' && round && roundComplete(round) ? (() => {
+    const o = roundOutcome(tour, round);
+    return o.status === 'tie' ? o.tie : null;
+  })() : null;
+  const lTie = leagueTie(tour);
 
   let hero;
   if (now) {
@@ -76,15 +76,35 @@ export function Home() {
           <ItemBox size={96} className="bob" />
           <div>
             <div className="now-title">{t('home.registrationBody', { n: tour.players.length, c: candidates.length })}</div>
-            {candidates.length < 3 && <p className="muted">{t('home.needPlayers')}</p>}
+            {candidates.length < (format === 'classic' ? 3 : 2) && <p className="muted">{t(format === 'classic' ? 'home.needPlayers' : 'home.needPlayers2')}</p>}
             <div className="btn-row">
-              <button className="btn btn-red btn-xl" disabled={candidates.length < 3} onClick={() => setPreview(true)} data-testid="generate-round">
-                {t('home.generateFirst')}
+              <button className="btn btn-red btn-xl" disabled={candidates.length < (format === 'classic' ? 3 : 2)} onClick={() => setPreview(true)} data-testid="generate-round">
+                {nextRoundLabel(t, tour)}
               </button>
               <button className="btn btn-sky btn-lg" onClick={() => go('join')}>
                 <IconTablet /> {t('home.openKiosk')}
               </button>
             </div>
+          </div>
+        </div>
+      </Card>
+    );
+  } else if (koTie) {
+    hero = <SuddenDeathCard tie={koTie} body={t('ko.tieBody', { names: names(tour, koTie) })} />;
+  } else if (phase === 'podium' && lTie) {
+    hero = <SuddenDeathCard tie={lTie} body={t('league.tieBody', { names: names(tour, lTie) })} />;
+  } else if (phase === 'qualifying' && round && roundComplete(round) && format !== 'classic') {
+    hero = (
+      <Card title={t('home.roundDoneNamed', { name: roundLabel(t, tour, round.index) })} className="now-card" tone="green">
+        <div className="hero-row">
+          <Flag size={96} className="bob" />
+          <div className="btn-row">
+            <button className="btn btn-red btn-xl" onClick={() => setPreview(true)} data-testid="generate-round">
+              {nextRoundLabel(t, tour)}
+            </button>
+            <button className="btn btn-white btn-lg" onClick={() => go('standings')}>
+              <IconList /> {t('nav.standings')}
+            </button>
           </div>
         </div>
       </Card>
@@ -114,7 +134,7 @@ export function Home() {
     );
   } else if (phase === 'podium') {
     hero = (
-      <Card title={t('home.finalsDone')} className="now-card" tone="gold">
+      <Card title={t(format === 'league' ? 'home.leagueDone' : 'home.finalsDone')} className="now-card" tone="gold">
         <div className="hero-row">
           <Trophy size={110} className="bob" />
           <button className="btn btn-red btn-xl" onClick={() => go('podium')} data-testid="goto-podium">
@@ -158,11 +178,15 @@ export function Home() {
           </span>
           <span className="stat-label">{t('home.stats.heats')}</span>
         </div>
-        <div className="stat">
-          <span className="stat-num">{formatDuration(t, remainingMinutes(tour))}</span>
-          <span className="stat-label">{t('home.stats.left')}</span>
+        <div className="stat" data-testid="time-left">
+          <span className="stat-num">{formatDuration(t, est.minutesLeft)}</span>
+          <span className="stat-label">
+            {t('home.stats.left')}
+            {est.heatsLeft > 0 && <> · {t('time.ends', { time: clockTime(est.endsAt, lang) })}</>}
+          </span>
         </div>
       </div>
+      <TimeLine tour={tour} />
       <div className="quick-actions" role="group" aria-label={t('home.quick')}>
         <button className="btn btn-white" onClick={() => go('join')}>
           <IconTablet /> {t('home.openKiosk')}
@@ -182,15 +206,49 @@ export function Home() {
   );
 }
 
+/** "≈ 19 min per heat (measured over 4 heats) · 3 heats left · ends ≈ 22:10" and the plan vs. setup. */
+export function TimeLine({ tour, big }: { tour: Tournament; big?: boolean }) {
+  const t = useT();
+  const lang = useApp((s) => s.prefs.lang);
+  const est = estimateRemaining(tour, Date.now());
+  if (!est.heatsLeft) return null;
+  const perHeat = formatDuration(t, est.perHeat);
+  const live = makePlan(roundCandidates(tour).length, tour.settings);
+  const setup = makePlan(tour.settings.expectedPlayers, tour.settings);
+  const diff = live.minutes - setup.minutes;
+  return (
+    <p className={big ? 'big-time' : 'time-line muted'} data-testid="time-line">
+      {est.measured ? t('time.measured', { m: perHeat, n: est.measured }) : t('time.guess', { m: perHeat })} · {t('time.heatsLeft', { n: est.heatsLeft })} · {t('time.ends', { time: clockTime(est.endsAt, lang) })}
+      {!big && !tour.rounds.length && live.columns.length > 0 && diff !== 0 && (
+        <span className={diff > 0 ? 'plan-diff plan-diff-up' : 'plan-diff'} data-testid="plan-diff">
+          {' · '}
+          {t('plan.vsSetup', { n: roundCandidates(tour).length, e: tour.settings.expectedPlayers, d: `${diff > 0 ? '+' : '−'}${formatDuration(t, Math.abs(diff))}` })}
+        </span>
+      )}
+    </p>
+  );
+}
+
 function TopFive({ tour }: { tour: Tournament }) {
   const t = useT();
   const final = finalResults(tour);
+  const format = tour.settings.format;
   const rows = final
     ? final.slice(0, 5).map((r) => ({ playerId: r.playerId, rank: r.place, value: '' }))
-    : standings(tour)
-        .filter((r) => r.heats > 0 && !r.withdrawn)
-        .slice(0, 5)
-        .map((r) => ({ playerId: r.playerId, rank: r.rank, value: r.avg.toFixed(1) }));
+    : format === 'league'
+      ? leagueTable(tour)
+          .filter((r) => r.cups > 0 && !r.withdrawn)
+          .slice(0, 5)
+          .map((r) => ({ playerId: r.playerId, rank: r.rank, value: String(r.total) }))
+      : format === 'knockout'
+        ? knockoutTable(tour)
+            .filter((r) => r.status === 'in')
+            .slice(0, 5)
+            .map((r, i) => ({ playerId: r.playerId, rank: i + 1, value: r.cells[r.reached]?.points !== undefined ? String(r.cells[r.reached]!.points) : '' }))
+        : standings(tour)
+            .filter((r) => r.heats > 0 && !r.withdrawn)
+            .slice(0, 5)
+            .map((r) => ({ playerId: r.playerId, rank: r.rank, value: r.avg.toFixed(1) }));
   const byId = new Map(tour.players.map((p) => [p.id, p]));
   return (
     <Card title={final ? t('standings.final') : t('big.standingsTitle')} tone="gold" className="queue-card">

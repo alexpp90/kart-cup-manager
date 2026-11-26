@@ -7,7 +7,7 @@ export type SplitResult =
   | { ok: false; reason: 'too-few-players' };
 
 /**
- * Split n players into heats of at most `max`.
+ * Classic qualifying: split n players into heats of at most `max` (3..8).
  * heats = ceil(n / max); sizes differ by at most 1, largest heats first.
  * A heat may never have fewer than 3 players. Because ceil() already gives the
  * minimum number of heats, the only way to rebalance is to give byes: the
@@ -22,7 +22,8 @@ export function splitHeatSizes(n: number, max: HeatMax): SplitResult {
   return { ok: false, reason: 'too-few-players' };
 }
 
-function evenSplit(n: number, max: number): number[] {
+/** ceil(n / max) heats, sizes differ by at most 1, largest first. */
+export function evenSplit(n: number, max: number): number[] {
   const heats = Math.ceil(n / max);
   const base = Math.floor(n / heats);
   const extra = n % heats;
@@ -30,8 +31,8 @@ function evenSplit(n: number, max: number): number[] {
 }
 
 /** Can this set of heat sizes be played? Used when the organizer moves players around. */
-export function sizesAreValid(sizes: number[], max: HeatMax, allowedSpread = 1): boolean {
+export function sizesAreValid(sizes: number[], max: HeatMax, allowedSpread = 1, min = MIN_HEAT_SIZE): boolean {
   if (sizes.length === 0) return true;
-  if (sizes.some((s) => s < MIN_HEAT_SIZE || s > max)) return false;
+  if (sizes.some((s) => s < min || s > max)) return false;
   return Math.max(...sizes) - Math.min(...sizes) <= allowedSpread;
 }
