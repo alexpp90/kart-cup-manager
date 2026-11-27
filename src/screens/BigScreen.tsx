@@ -244,7 +244,7 @@ function RaceSlide({ tour, now, next, ready, join }: { tour: Tournament; now?: H
                     const p = byId.get(id);
                     return p ? (
                       <li key={id}>
-                        <Seat n={seatsOf(h).get(id)!} /> <Avatar player={p} size={44} /> {p.name}
+                        <Seat n={seatsOf(h).get(id)!} /> <Avatar player={p} size={44} /> <span className="big-queue-name">{p.name}</span>
                       </li>
                     ) : null;
                   })}

@@ -3801,3 +3801,79 @@ body.hide-cursor * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* TV side column: the queues keep their full height; the sign-up QR card takes
+   what is left and its code scales down to fit (it used to squeeze the queues). */
+.big-side {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 3.6vh;
+}
+.big-side .big-queue {
+  flex: none;
+}
+.big-side .big-join-small {
+  align-self: start;
+  max-height: 100%;
+  overflow: hidden;
+  padding-top: 1.4vh;
+  padding-bottom: 1.4vh;
+}
+.big-side .big-join-small .qr {
+  width: auto;
+  height: 100%;
+  max-height: 8vw;
+  min-height: 0;
+  aspect-ratio: 1;
+}
+.big-queue-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bracket: a long champion name wraps instead of widening (and clipping) the last column. */
+.bracket-champ,
+.champ-box {
+  min-width: 0;
+}
+.champ-box strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+}
+
+/* TV "Now racing" with 7–8 players: smaller player cards and the four tracks
+   on one line, so the cup under the grid stays inside the card at 1080p. */
+.big-now-players {
+  gap: 1vh 1vw;
+}
+.big-player {
+  padding: 0.8vh 0.6vw;
+  gap: 0.6vh;
+}
+.big-player .avatar {
+  width: 3.4vw !important;
+  height: 3.4vw !important;
+  font-size: 1.35vw !important;
+}
+.big-heat-title {
+  font-size: 3em;
+  margin: 0.8vh 0 1vh;
+}
+.big-cup {
+  margin-top: 1.2vh;
+  padding-top: 1vh;
+  flex: none;
+}
+.big-cup .cup-tracks {
+  grid-template-columns: repeat(4, auto);
+  gap: 0.2em 1.6em;
+  padding-left: 0;
+  list-style-position: inside;
+}
+
+/* The bracket uses the full window width (it scrolls sideways only when it must). */
+.main:has(.bracket-page) {
+  max-width: none;
+}

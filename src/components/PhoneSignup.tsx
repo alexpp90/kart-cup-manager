@@ -1,5 +1,6 @@
 // Organizer card: start phone sign-up, show the QR code and the link, stop it.
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { registrationOpen } from '../engine/tournament';
 import { joinUrl, serverMode, startPhoneSignUp, stopPhoneSignUp, usePhone, wifiQr } from '../lib/server';
 import { useApp, useT } from '../store/store';
@@ -74,7 +75,8 @@ function QrOverlay({ title, join, onClose }: { title: string; join: string; onCl
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
+  // Rendered into <body>: inside the (animated) card, `position: fixed` would be relative to the card.
+  return createPortal(
     <div className="qr-overlay" role="dialog" aria-modal="true" aria-label={t('phone.showQr')} onClick={onClose} data-testid="qr-overlay">
       <h2 className="display">{title}</h2>
       <p className="qr-overlay-sub">{t('big.scanToJoin')}</p>
@@ -82,6 +84,7 @@ function QrOverlay({ title, join, onClose }: { title: string; join: string; onCl
       <button className="btn btn-white btn-lg" onClick={onClose} autoFocus data-testid="qr-overlay-close">
         {t('common.close')}
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }

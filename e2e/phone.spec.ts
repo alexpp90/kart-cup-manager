@@ -74,6 +74,10 @@ test.describe('[journey] phone sign-up', () => {
     // "Show QR code" puts the codes across the whole screen (the Pi's admin screen).
     await page.click('[data-testid=phone-show-qr]');
     await expect(page.locator('[data-testid=qr-overlay] [data-testid=qr]')).toHaveCount(2);
+    // It really covers the whole window (not only the card it was opened from).
+    const box = await page.locator('[data-testid=qr-overlay]').boundingBox();
+    expect(box).toMatchObject({ x: 0, y: 0, width: 1366, height: 900 });
+    await expect(page.locator('[data-testid=qr-overlay] [data-testid=join-qrs]')).toBeInViewport({ ratio: 1 });
     await page.waitForTimeout(400);
     await shot(page, 'phone', 'qr-fullscreen');
     await page.keyboard.press('Escape');

@@ -42,7 +42,7 @@ const en = {
   'common.minutes': '{n} min',
   'common.hoursMinutes': '{h} h {m} min',
   'common.players': '{n} players',
-  'common.heats': '{n} heats',
+  'common.heats': '{n} {n:heat|heats}',
   'common.optional': 'optional',
   'common.search': 'Search',
   'common.all': 'All',
@@ -484,9 +484,9 @@ const en = {
   'plan.saves': 'saves {d}',
   'plan.cupsEach': '{c} cups per player',
   'plan.vsSetup': 'planned for {e}, now {n} players: {d}',
-  'time.measured': '≈ {m} per heat (measured over {n} heats)',
+  'time.measured': '≈ {m} per heat (measured over {n} {n:heat|heats})',
   'time.guess': '≈ {m} per heat (estimate)',
-  'time.heatsLeft': '{n} heats left',
+  'time.heatsLeft': '{n} {n:heat|heats} left',
   'time.ends': 'ends ≈ {time}',
   'heat.cup': 'Cup {n}',
   'heat.lastChanceRound': 'Last Chance · Round {r}',
@@ -656,7 +656,7 @@ const de: Record<Key, string> = {
   'common.minutes': '{n} Min.',
   'common.hoursMinutes': '{h} Std. {m} Min.',
   'common.players': '{n} Spieler',
-  'common.heats': '{n} Läufe',
+  'common.heats': '{n} {n:Lauf|Läufe}',
   'common.optional': 'optional',
   'common.search': 'Suchen',
   'common.all': 'Alle',
@@ -1098,9 +1098,9 @@ const de: Record<Key, string> = {
   'plan.saves': 'spart {d}',
   'plan.cupsEach': '{c} Cups pro Person',
   'plan.vsSetup': 'geplant für {e}, jetzt {n} Spieler: {d}',
-  'time.measured': '≈ {m} pro Lauf (gemessen über {n} Läufe)',
+  'time.measured': '≈ {m} pro Lauf (gemessen über {n} {n:Lauf|Läufen})',
   'time.guess': '≈ {m} pro Lauf (geschätzt)',
-  'time.heatsLeft': 'noch {n} Läufe',
+  'time.heatsLeft': 'noch {n} {n:Lauf|Läufe}',
   'time.ends': 'Ende ≈ {time}',
   'heat.cup': 'Cup {n}',
   'heat.lastChanceRound': 'Last Chance · Runde {r}',
@@ -1235,7 +1235,10 @@ export type Params = Record<string, string | number>;
 export function translate(lang: Lang, key: Key, params?: Params): string {
   const raw = dictionaries[lang][key] ?? en[key] ?? key;
   if (!params) return raw;
-  return raw.replace(/\{(\w+)\}/g, (_, k: string) => (k in params ? String(params[k]) : `{${k}}`));
+  // {n:one|other} picks the singular when the number is exactly 1.
+  return raw
+    .replace(/\{(\w+):([^|}]*)\|([^}]*)\}/g, (all, k: string, one: string, other: string) => (k in params ? (Number(params[k]) === 1 ? one : other) : all))
+    .replace(/\{(\w+)\}/g, (_, k: string) => (k in params ? String(params[k]) : `{${k}}`));
 }
 
 /** Stage names are stored as i18n keys for presets, or as free text for custom stages. */

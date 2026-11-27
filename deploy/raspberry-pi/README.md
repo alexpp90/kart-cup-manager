@@ -78,10 +78,14 @@ or a thin cable the Pi slows down and the Wi-Fi can drop; `vcgencmd get_throttle
 
 ## On the party day
 
-* Switch on the Pi (and its screen). Organizer: laptop on the Kart Cup Wi-Fi, open **http://kartcup.lan**.
-* *Start phone sign-up*; the TV shows the QR codes while registration is open.
-* When everyone is there: **Start racing** (heat size, format, Grand Prix or VS races).
-* The tournament lives in the organizer's browser as before: export a backup now and then.
+* Switch on the Pi with its screen, keyboard and mouse: after about a minute the admin screen is
+  open full screen. (Or run it from a laptop on the Kart Cup Wi-Fi at **http://kartcup.lan**.)
+* **New tournament** → *Start phone sign-up* → **Show QR code** for the guests to scan. The TV
+  window shows the QR codes too while registration is open.
+* When everyone is there: **Start racing** (controllers, format, Grand Prix or VS races). Each heat
+  shows which controller number every racer takes.
+* The tournament lives in the browser of the screen you run it on (the Pi's, or the laptop's):
+  export a backup now and then (*Settings → Export backup*).
 
 ## If something doesn't work
 
@@ -98,5 +102,16 @@ To go back to the Pi's normal Wi-Fi: see the note under step 2.
 
 ## Update to a new version
 
-Copy the new `kart-cup-server` folder onto the Pi (USB stick or the SD card's bootfs) and run
-`sudo bash install.sh` in it again. The Wi-Fi password stays the same.
+Build the folder on a computer with `npm run package:server` (it lands in
+`dist/kart-cup-server/`), copy it onto the Pi (USB stick, the SD card's bootfs, or `scp`) and
+run `sudo bash install.sh` in it again. The Wi-Fi password stays the same.
+
+For an app-only update no password is needed: `/opt/kart-cup` belongs to the Pi's user, and the
+server picks up a new `index.html` by itself, so copying the file is enough:
+
+```bash
+cp index.html /opt/kart-cup/index.html
+```
+
+Then reload the admin screen (F5). A new `server.mjs` still needs the installer (or
+`sudo systemctl restart kart-cup` after copying it).

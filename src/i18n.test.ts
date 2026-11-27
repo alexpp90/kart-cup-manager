@@ -67,4 +67,11 @@ describe('build rules', () => {
       expect(text, f).not.toMatch(/from ['"]\.\.\/(components|screens|store|lib)\//);
     }
   });
+  it('[REQ-I18N-002] counts pick singular or plural in both languages', () => {
+    expect(translate('en', 'time.heatsLeft', { n: 1 })).toBe('1 heat left');
+    expect(translate('en', 'time.heatsLeft', { n: 3 })).toBe('3 heats left');
+    expect(translate('en', 'common.heats', { n: 0 })).toBe('0 heats');
+    expect(translate('de', 'time.heatsLeft', { n: 1 })).toBe('noch 1 Lauf');
+    expect(translate('de', 'time.measured', { m: '5 min', n: 2 })).toBe('≈ 5 min pro Lauf (gemessen über 2 Läufen)');
+  });
 });
