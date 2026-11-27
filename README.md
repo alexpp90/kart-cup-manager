@@ -142,3 +142,9 @@ npm run trace:check  # requirements × tests → docs/traceability.md; fails on 
 * Export a backup now and then (*Settings → Export backup*). The browser warns you before closing if you haven't.
 * *Settings → Export standings (CSV)* gives you a spreadsheet of the results.
 * Sound is off by default (speaker icon in the top bar). EN/DE switches the language.
+
+## Licence and trademarks
+
+The code is under the [MIT licence](LICENSE). The bundled fonts (Lilita One, Nunito) are under the SIL Open Font License, see their packages in `node_modules/@fontsource/`.
+
+Kart Cup Manager is a fan-made organizer tool. It is **not affiliated with, endorsed or sponsored by Nintendo**. Mario Kart, Nintendo Switch and the cup and track names are trademarks of Nintendo; they appear only as plain text so the organizer can pick what to race. The app contains no Nintendo artwork, logos, sprites, fonts or sounds: every icon and graphic is drawn for this project.
